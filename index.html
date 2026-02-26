@@ -218,21 +218,21 @@
                                 <div className="w-10 h-10 bg-black text-white flex items-center justify-center font-black text-xl rounded-sm tracking-tighter">LS</div>
                                 <div>
                                     <h1 className="font-black text-xl leading-none uppercase tracking-wide">LAMSANG</h1>
-                                    <p className="text-[10px] font-bold mt-0.5 tracking-widest text-gray-700">STORE OFFICIAL</p>
+                                    <p className="text-[10px] font-black mt-0.5 tracking-widest text-black">STORE OFFICIAL</p>
                                 </div>
                             </div>
                             <div className="flex flex-col items-end">
                                 <div className="bg-black text-white px-3 py-1 font-black text-lg rounded-sm tracking-widest">
                                     REFUND
                                 </div>
-                                <p className="text-[9px] font-bold mt-1">ใบแจ้งสินค้าหมด / คืนเงิน</p>
+                                <p className="text-[9px] font-black mt-1 text-black">ใบแจ้งสินค้าหมด / คืนเงิน</p>
                             </div>
                         </div>
 
                         {/* Warning Banner */}
-                        <div className="bg-gray-100 border-[3px] border-black p-2 mb-2 text-center">
-                            <h2 className="font-black text-lg tracking-wide">⚠️ สินค้าหมดสต๊อก ⚠️</h2>
-                            <p className="text-xs font-bold mt-0.5 text-gray-800">โปรดติดต่อร้านค้าเพื่อรับเงินคืน ตามยอดด้านล่าง</p>
+                        <div className="bg-white border-[3px] border-black p-2 mb-2 text-center">
+                            <h2 className="font-black text-lg tracking-wide text-black">⚠️ สินค้าหมดสต๊อก ⚠️</h2>
+                            <p className="text-xs font-bold mt-0.5 text-black">โปรดติดต่อร้านค้าเพื่อรับเงินคืน ตามยอดด้านล่าง</p>
                         </div>
 
                         {/* Product & SKU QR Zone */}
@@ -243,27 +243,27 @@
                             </div>
                             <div className="flex p-2 justify-between items-center h-full">
                                 <div className="flex-1 pr-2 flex flex-col justify-center">
-                                    <p className="font-black text-base leading-snug">{data.productName}</p>
-                                    <p className="text-xs text-gray-700 mt-1">ตัวเลือก: <span className="font-bold text-black">{data.variantName || '-'}</span></p>
-                                    <p className="text-xs text-gray-700 mt-0.5">SKU: <span className="font-bold text-black">{data.sku || '-'}</span></p>
+                                    <p className="font-black text-base leading-snug text-black">{data.productName}</p>
+                                    <p className="text-xs text-black font-bold mt-1">ตัวเลือก: <span className="font-black">{data.variantName || '-'}</span></p>
+                                    <p className="text-xs text-black font-bold mt-0.5">SKU: <span className="font-black">{data.sku || '-'}</span></p>
                                 </div>
                                 {data.sku && (
-                                    <div className="flex flex-col items-center justify-center pl-2 border-l-[2px] border-gray-300">
+                                    <div className="flex flex-col items-center justify-center pl-2 border-l-[3px] border-black">
                                         <img src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(data.sku)}`} alt="SKU QR" className="w-12 h-12" />
-                                        <span className="text-[8px] font-black mt-1 uppercase tracking-widest text-gray-600">SKU QR</span>
+                                        <span className="text-[8px] font-black mt-1 uppercase tracking-widest text-black">SKU QR</span>
                                     </div>
                                 )}
                             </div>
                         </div>
 
                         {/* Calculation */}
-                        <div className="border-[3px] border-black p-2 flex justify-between items-center bg-gray-50 mb-1">
-                            <div className="text-xs font-bold text-gray-700">
+                        <div className="border-[3px] border-black p-2 flex justify-between items-center bg-white mb-1">
+                            <div className="text-xs font-black text-black">
                                 <p>ราคาสินค้า: {data.originalPrice || 0} บาท</p>
                                 <p className="mt-0.5">ส่วนลด: {data.discountText || '0 บาท'}</p>
                             </div>
                             <div className="text-right">
-                                <p className="text-[9px] font-black mb-0.5 uppercase tracking-wider text-gray-500">ยอดเงินคืนสุทธิ</p>
+                                <p className="text-[9px] font-black mb-0.5 uppercase tracking-wider text-black">ยอดเงินคืนสุทธิ</p>
                                 <div className="text-2xl font-black text-black">
                                     ฿ {data.refundAmount}
                                 </div>
@@ -272,11 +272,11 @@
                     </div>
 
                     {/* Footer/Contact - Placed perfectly at the bottom edge */}
-                    <div className="border-t-[3px] border-black flex items-stretch mt-auto bg-yellow-50 h-[36mm]">
+                    <div className="border-t-[3px] border-black flex items-stretch mt-auto bg-white h-[36mm]">
                         <div className="w-2/3 p-2 flex flex-col justify-center border-r-[3px] border-black">
                             <p className="font-black text-[12px] mb-1.5 bg-black text-white inline-block px-2 py-0.5 self-start">ขั้นตอนการรับเงินคืน:</p>
-                            <ol className="text-[10px] space-y-1.5 list-decimal list-inside font-bold text-gray-800 leading-tight">
-                                <li>แอด Line ID: <span className="text-[11px] bg-white px-1.5 py-0.5 border border-black">@lamsangstore</span></li>
+                            <ol className="text-[10px] space-y-1.5 list-decimal list-inside font-black text-black leading-tight">
+                                <li>แอด Line ID: <span className="text-[11px] bg-white px-1.5 py-0.5 border-2 border-black">@lamsangstore</span></li>
                                 <li>ถ่ายรูปใบปะหน้านี้ส่งให้แอดมิน</li>
                                 <li>แจ้งเลขที่บัญชีเพื่อรับยอดโอนคืน</li>
                             </ol>
@@ -489,12 +489,17 @@
                 return { h:[...h].sort(), i:[...i].sort(), j:[...j].sort() };
             }, [rawData]);
 
-            const filteredData = useMemo(() => rawData.filter(row => {
-                const vH=String(row[7]||'').toLowerCase(), vI=String(row[8]||'').toLowerCase(), vJ=String(row[9]||'').toLowerCase();
-                const s=searchTerm.toLowerCase();
-                const ok = !searchTerm || [String(row[0]),String(row[1]),String(row[2]),vH,vI,vJ].some(v=>v.includes(s));
-                return ok && (!filterH||vH===filterH.toLowerCase()) && (!filterI||vI===filterI.toLowerCase()) && (!filterJ||vJ===filterJ.toLowerCase());
-            }), [rawData, searchTerm, filterH, filterI, filterJ]);
+            const filteredData = useMemo(() => {
+                const filtered = rawData.filter(row => {
+                    const vH=String(row[7]||'').toLowerCase(), vI=String(row[8]||'').toLowerCase(), vJ=String(row[9]||'').toLowerCase();
+                    const s=searchTerm.toLowerCase();
+                    const ok = !searchTerm || [String(row[0]),String(row[1]),String(row[2]),vH,vI,vJ].some(v=>v.includes(s));
+                    return ok && (!filterH||vH===filterH.toLowerCase()) && (!filterI||vI===filterI.toLowerCase()) && (!filterJ||vJ===filterJ.toLowerCase());
+                });
+
+                // จัดเรียงลำดับจากน้อยไปมาก โดยใช้คอลัมน์ลำดับ (row[0])
+                return filtered.sort((a, b) => String(a[0]).localeCompare(String(b[0]), undefined, { numeric: true }));
+            }, [rawData, searchTerm, filterH, filterI, filterJ]);
 
             if (loading) return (
                 <div className="flex h-screen items-center justify-center bg-[#fff5f7] p-6 text-center">
@@ -572,6 +577,29 @@
                                         <button onClick={()=>setIsSettingsOpen(false)} className="flex-1 p-4 bg-pink-500 text-white rounded-2xl font-bold shadow-lg">บันทึกจ้า</button>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Sticker print preview (กรณี Fallback ถ้าต้องเปิดผ่านหน้าเว็บตรงๆ) */}
+                    {printData && (
+                        <div className="print-only">
+                            <style type="text/css">
+                                {`@media print { @page { size: 32mm 25mm; margin: 0; } body { background: white !important; } }`}
+                            </style>
+                            <div className="sticker-container">
+                                {[1,2,3].map(n => (
+                                    <div key={n} className="sticker-unit">
+                                        <span className="sticker-title">{printData[3]}</span>
+                                        <div className="qr-wrapper">
+                                            <img className="qr-image" src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(printData[1])}`} alt="QR" />
+                                        </div>
+                                        <div className="sticker-footer">
+                                            <span>🎀 {printData[8]}</span>
+                                            <span>⭐️ {printData[9]}</span>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     )}
