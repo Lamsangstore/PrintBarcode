@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LAMSANG Barcode System ✨</title>
+    <!-- เพิ่ม Favicon รูป 🍬 เข้ากับธีมของเว็บ -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍬</text></svg>">
+    
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -130,7 +134,6 @@
                 
                 let d = 0;
                 const discStr = String(discount).trim();
-                // เช็คว่ามีเครื่องหมาย % หรือไม่
                 if (discStr.endsWith('%')) {
                     const percent = parseFloat(discStr.replace('%', '')) || 0;
                     d = (p * percent) / 100;
@@ -155,7 +158,6 @@
             return (
                 <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[300] flex items-center justify-center p-4" onClick={onClose}>
                     <div className="bg-white rounded-[2rem] shadow-2xl p-6 md:p-8 w-full max-w-lg border-4 border-pink-100 animate-item" onClick={e => e.stopPropagation()}>
-                        {/* Header */}
                         <div className="flex items-center gap-3 mb-6">
                             <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center text-2xl">📝</div>
                             <div>
@@ -164,14 +166,12 @@
                             </div>
                         </div>
 
-                        {/* Product Info */}
                         <div className="bg-pink-50 rounded-2xl p-4 mb-5 border border-pink-100">
                             <p className="text-xs font-bold text-pink-400 uppercase mb-1">สินค้าที่หมดสต๊อก</p>
                             <p className="text-lg font-black text-pink-700 leading-tight">{productName}</p>
                             <p className="text-sm text-pink-500 mt-1">ตัวเลือก: {variantName || '-'}</p>
                         </div>
 
-                        {/* Price Inputs */}
                         <div className="grid grid-cols-2 gap-3 mb-5">
                             <div>
                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">ราคาสินค้า (บาท)</label>
@@ -192,7 +192,6 @@
                             </div>
                         )}
 
-                        {/* Actions */}
                         <div className="flex gap-3">
                             <button onClick={onClose} className="flex-1 p-4 bg-slate-100 text-slate-500 rounded-2xl font-bold hover:bg-slate-200 transition-colors">ยกเลิก</button>
                             <button onClick={handleGenerate} disabled={!refundAmount}
@@ -330,32 +329,104 @@
             );
         };
 
+        /* =================== Sticker Quantity Modal (หน้าต่างคำนวณจำนวนสติกเกอร์) =================== */
+        const StickerQuantityModal = ({ row, onClose, onProceed }) => {
+            const productName = String(row[3] || '');
+            const sku = String(row[1] || '');
+            const [targetQty, setTargetQty] = useState('');
+
+            // คำนวณจำนวนแผ่นอัตโนมัติ (1 แผ่น = 3 ดวง)
+            const copies = useMemo(() => {
+                const qty = parseInt(targetQty, 10);
+                if (isNaN(qty) || qty <= 0) return 0;
+                return Math.ceil(qty / 3);
+            }, [targetQty]);
+
+            const handleProceed = () => {
+                if (copies > 0) {
+                    onProceed(copies);
+                }
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[300] flex items-center justify-center p-4" onClick={onClose}>
+                    <div className="bg-white rounded-[2rem] shadow-2xl p-6 md:p-8 w-full max-w-md border-4 border-pink-100 animate-item" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-12 h-12 bg-pink-100 rounded-2xl flex items-center justify-center text-2xl">🖨️</div>
+                            <div>
+                                <h3 className="text-xl font-black text-pink-600">คำนวณจำนวนสติกเกอร์</h3>
+                                <p className="text-xs text-slate-400">1 แผ่น (แถว) พิมพ์ได้ 3 ดวง</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-pink-50 rounded-2xl p-4 mb-5 border border-pink-100">
+                            <p className="text-xs font-bold text-pink-400 uppercase mb-1">สินค้าที่ต้องการพิมพ์</p>
+                            <p className="text-lg font-black text-pink-700 leading-tight">{productName}</p>
+                            <p className="text-sm text-pink-500 mt-1">SKU: {sku}</p>
+                        </div>
+
+                        <div className="mb-5">
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">ต้องการใช้งานกี่ดวง?</label>
+                            <input 
+                                type="number" 
+                                placeholder="เช่น 100" 
+                                value={targetQty} 
+                                onChange={e => setTargetQty(e.target.value)} 
+                                autoFocus
+                                className="w-full p-4 border-2 border-yellow-100 rounded-2xl outline-none focus:border-pink-400 font-black text-slate-700 text-2xl text-center" 
+                            />
+                        </div>
+
+                        {copies > 0 && (
+                            <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-4 mb-6 text-center animate-item">
+                                <p className="text-sm font-bold text-blue-600 mb-1">{targetQty} ดวง / 3 ดวงต่อแผ่น</p>
+                                <p className="text-lg font-black text-blue-800">
+                                    ต้องสั่งพิมพ์ <span className="text-4xl text-pink-600 mx-2 leading-none">{copies}</span> แผ่น
+                                </p>
+                                <p className="text-xs font-bold text-blue-500 mt-2">จะได้สติกเกอร์รวม {copies * 3} ดวง พอดีจ้า!</p>
+                            </div>
+                        )}
+
+                        <div className="flex gap-3">
+                            <button onClick={onClose} className="flex-1 p-4 bg-slate-100 text-slate-500 rounded-2xl font-bold hover:bg-slate-200 transition-colors">ยกเลิก</button>
+                            <button onClick={handleProceed} disabled={copies <= 0}
+                                className={`flex-1 p-4 rounded-2xl font-black shadow-lg flex items-center justify-center gap-2 transition-all ${copies > 0 ? 'bg-pink-500 text-white hover:bg-pink-600 active:scale-95' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
+                                ไปหน้าพรีวิว ➡️
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         /* =================== Sticker Preview Modal (100x25mm 3-up) =================== */
-        const StickerPreviewModal = ({ row, onClose, printerIP }) => {
+        const StickerPreviewModal = ({ data, onClose, printerIP }) => {
+            const { row, copies } = data;
             const productName = String(row[3] || '');
             const sku = String(row[1] || '');
             const variantName = String(row[4] || '');
 
             // ZPL ที่ปรับสำหรับขนาด 100x25mm (กว้าง 800 จุด สูง 200 จุด) วาง 3 แถวสมมาตร
+            // ขยายขนาด QR Code (^BQN,2,5) และจัดตำแหน่งกึ่งกลางใหม่
             const generateZPL = () => {
                 return `^XA^CI28^PW800^LL200^MD20
 ^FO10,15^A0N,22,22^FB246,1,0,C^FD${productName.substring(0,25)}^FS
-^FO85,45^BQN,2,4^FDQA,${sku}^FS
+^FO68,38^BQN,2,5^FDQA,${sku}^FS
 ^FO10,165^A0N,20,20^FB246,1,0,C^FD${variantName.substring(0,25)}^FS
 ^FO276,15^A0N,22,22^FB246,1,0,C^FD${productName.substring(0,25)}^FS
-^FO351,45^BQN,2,4^FDQA,${sku}^FS
+^FO335,38^BQN,2,5^FDQA,${sku}^FS
 ^FO276,165^A0N,20,20^FB246,1,0,C^FD${variantName.substring(0,25)}^FS
 ^FO542,15^A0N,22,22^FB246,1,0,C^FD${productName.substring(0,25)}^FS
-^FO617,45^BQN,2,4^FDQA,${sku}^FS
+^FO601,38^BQN,2,5^FDQA,${sku}^FS
 ^FO542,165^A0N,20,20^FB246,1,0,C^FD${variantName.substring(0,25)}^FS
-^PQ1^XZ`;
+^PQ${copies}^XZ`;
             };
 
             const handlePrint = async () => {
                 if (printerIP) {
                     try {
                         await fetch(`http://${printerIP}/pstprnt`, { method:'POST', mode:'no-cors', body:generateZPL() });
-                        alert(`ส่งคำสั่งพิมพ์ ZPL ไปยัง ${printerIP} เรียบร้อยแล้วจ้า! 🍬`);
+                        alert(`ส่งคำสั่งพิมพ์ ${copies} แผ่น ไปยัง ${printerIP} เรียบร้อยแล้วจ้า! 🍬`);
                     } catch(err) { window.print(); }
                 } else {
                     window.print();
@@ -374,26 +445,33 @@
                     </style>
 
                     {/* Toolbar */}
-                    <div className="w-full max-w-2xl px-4 flex justify-between items-center mb-6 print-hide">
-                        <button onClick={onClose} className="px-5 py-2.5 bg-slate-700 text-white rounded-xl font-bold hover:bg-slate-600 transition-colors flex items-center gap-2">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-                            กลับ
-                        </button>
-                        <button onClick={handlePrint} className="px-8 py-2.5 bg-pink-500 text-white rounded-xl font-black shadow-lg hover:bg-pink-400 transition-colors flex items-center gap-2">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-                            {printerIP ? 'พิมพ์ผ่าน WiFi' : 'สั่งพิมพ์สติกเกอร์ (100x25mm)'}
-                        </button>
+                    <div className="w-full max-w-2xl px-4 flex flex-col items-center mb-6 print-hide">
+                        {!printerIP && (
+                            <div className="bg-yellow-100 border-2 border-yellow-400 text-yellow-900 font-bold px-4 py-2 rounded-xl mb-4 w-full text-center">
+                                📌 อย่าลืม! ตอนกดพิมพ์ให้แก้ช่อง <span className="text-red-600 font-black text-lg mx-1">Copies (สำเนา)</span> ให้เป็น <span className="text-red-600 font-black text-xl mx-1">{copies}</span> ด้วยนะคะ
+                            </div>
+                        )}
+                        <div className="w-full flex justify-between items-center">
+                            <button onClick={onClose} className="px-5 py-2.5 bg-slate-700 text-white rounded-xl font-bold hover:bg-slate-600 transition-colors flex items-center gap-2">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                                กลับ
+                            </button>
+                            <button onClick={handlePrint} className="px-8 py-2.5 bg-pink-500 text-white rounded-xl font-black shadow-lg hover:bg-pink-400 transition-colors flex items-center gap-2">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                                {printerIP ? `สั่งพิมพ์ ZPL ${copies} แผ่น` : 'เปิดหน้าต่างสั่งพิมพ์'}
+                            </button>
+                        </div>
                     </div>
 
                     {/* ตัว Label พรีวิว */}
-                    <div className="bg-white w-[100mm] h-[25mm] flex box-border shadow-[0_0_40px_rgba(0,0,0,0.5)] print:shadow-none print:m-0 overflow-hidden text-black font-sans" style={{ fontFamily: "'Sarabun', sans-serif" }}>
+                    <div className="bg-white w-[100mm] h-[25mm] flex box-border shadow-[0_0_40px_rgba(0,0,0,0.5)] print:shadow-none print:m-0 overflow-hidden text-black font-sans relative" style={{ fontFamily: "'Sarabun', sans-serif" }}>
                         {[1, 2, 3].map((num) => (
                             <div key={num} className="flex-1 flex flex-col items-center justify-between p-[1mm] border-r border-dashed border-gray-300 last:border-r-0 h-full w-[33.33mm] box-border overflow-hidden">
                                 <div className="text-[7.5pt] font-extrabold w-full text-center whitespace-nowrap overflow-hidden text-ellipsis leading-none pt-[1mm]">
                                     {productName}
                                 </div>
-                                <div className="flex-grow flex items-center justify-center my-[0.5mm]">
-                                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(sku)}`} alt="QR" className="h-[12mm] w-[12mm]" style={{ imageRendering: 'pixelated' }} />
+                                <div className="flex-grow flex items-center justify-center">
+                                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(sku)}`} alt="QR" className="h-[16mm] w-[16mm]" style={{ imageRendering: 'pixelated' }} />
                                 </div>
                                 <div className="text-[6.5pt] font-bold w-full text-center whitespace-nowrap overflow-hidden text-ellipsis leading-none pb-[1mm]">
                                     {variantName}
@@ -416,10 +494,11 @@
             const [loading, setLoading] = useState(true);
             const [error, setError] = useState(null);
             
-            const [stickerPreview, setStickerPreview] = useState(null); // พรีวิวสติกเกอร์ 100x25mm
-            const [noticeRow, setNoticeRow] = useState(null); // Row สำหรับเปิด Modal กรอกราคา
-            const [labelPreview, setLabelPreview] = useState(null); // Data สำหรับหน้า Preview ใบแปะหน้า A6
-            const [printData, setPrintData] = useState(null); // สำหรับกรณี fallback สติกเกอร์จิ๋ว
+            const [stickerPromptRow, setStickerPromptRow] = useState(null); // 1. หน้าจอคำนวณสติกเกอร์
+            const [stickerPreview, setStickerPreview] = useState(null);     // 2. พรีวิวสติกเกอร์ 100x25mm {row, copies}
+            
+            const [noticeRow, setNoticeRow] = useState(null);               // Row สำหรับเปิด Modal กรอกราคา
+            const [labelPreview, setLabelPreview] = useState(null);         // Data สำหรับหน้า Preview ใบแปะหน้า A6
 
             const [printerIP, setPrinterIP] = useState('');
             const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -485,9 +564,41 @@
 
             const dropdownOptions = useMemo(() => {
                 const h=new Set(), i=new Set(), j=new Set();
-                rawData.forEach(r => { if(r[7])h.add(r[7]); if(r[8])i.add(r[8]); if(r[9])j.add(r[9]); });
-                return { h:[...h].sort(), i:[...i].sort(), j:[...j].sort() };
-            }, [rawData]);
+                rawData.forEach(r => { 
+                    const vH = String(r[7]||'').toLowerCase();
+                    const vI = String(r[8]||'').toLowerCase();
+                    const vJ = String(r[9]||'').toLowerCase();
+
+                    const matchH = !filterH || vH === filterH.toLowerCase();
+                    const matchI = !filterI || vI === filterI.toLowerCase();
+                    const matchJ = !filterJ || vJ === filterJ.toLowerCase();
+
+                    // แสดงตัวเลือกเฉพาะที่สอดคล้องกับฟิลเตอร์อื่นๆ ที่เลือกไว้แล้ว
+                    if (matchI && matchJ && r[7]) h.add(r[7]);
+                    if (matchH && matchJ && r[8]) i.add(r[8]);
+                    if (matchH && matchI && r[9]) j.add(r[9]);
+                });
+
+                // ลำดับไซส์มาตรฐานที่ร้านค้าใช้
+                const sizeOrderArr = ["xs", "s", "m", "l", "xl", "xxl", "2xl", "3xl", "4xl", "5xl", "f", "freesize"];
+                const sortSizes = (a, b) => {
+                    const aLow = String(a).toLowerCase().trim();
+                    const bLow = String(b).toLowerCase().trim();
+                    const aIdx = sizeOrderArr.indexOf(aLow);
+                    const bIdx = sizeOrderArr.indexOf(bLow);
+                    
+                    if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+                    if (aIdx !== -1) return -1;
+                    if (bIdx !== -1) return 1;
+                    return aLow.localeCompare(bLow, 'th');
+                };
+
+                return { 
+                    h: [...h].sort((a,b) => String(a).localeCompare(String(b), 'th')), 
+                    i: [...i].sort((a,b) => String(a).localeCompare(String(b), 'th')), 
+                    j: [...j].sort(sortSizes) 
+                };
+            }, [rawData, filterH, filterI, filterJ]);
 
             const filteredData = useMemo(() => {
                 const filtered = rawData.filter(row => {
@@ -497,8 +608,35 @@
                     return ok && (!filterH||vH===filterH.toLowerCase()) && (!filterI||vI===filterI.toLowerCase()) && (!filterJ||vJ===filterJ.toLowerCase());
                 });
 
-                // จัดเรียงลำดับจากน้อยไปมาก โดยใช้คอลัมน์ลำดับ (row[0])
-                return filtered.sort((a, b) => String(a[0]).localeCompare(String(b[0]), undefined, { numeric: true }));
+                // จัดเรียงลำดับใหม่: 1.สี -> 2.ไซส์ -> 3.ลำดับ(น้อยไปมาก)
+                const sizeOrderArr = ["xs", "s", "m", "l", "xl", "xxl", "2xl", "3xl", "4xl", "5xl", "f", "freesize"];
+                const getSizeWeight = (sizeStr) => {
+                    const s = String(sizeStr).toLowerCase().trim();
+                    const idx = sizeOrderArr.indexOf(s);
+                    return idx !== -1 ? idx : 999;
+                };
+
+                return filtered.sort((a, b) => {
+                    const colorA = String(a[8] || "");
+                    const colorB = String(b[8] || "");
+                    const colorCmp = colorA.localeCompare(colorB, 'th');
+                    if (colorCmp !== 0) return colorCmp;
+
+                    const sizeA = String(a[9] || "");
+                    const sizeB = String(b[9] || "");
+                    const weightA = getSizeWeight(sizeA);
+                    const weightB = getSizeWeight(sizeB);
+                    
+                    if (weightA !== weightB) {
+                        return weightA - weightB;
+                    }
+                    if (weightA === 999 && weightB === 999) {
+                        const sizeCmp = sizeA.localeCompare(sizeB, 'th');
+                        if (sizeCmp !== 0) return sizeCmp;
+                    }
+
+                    return String(a[0]).localeCompare(String(b[0]), undefined, { numeric: true });
+                });
             }, [rawData, searchTerm, filterH, filterI, filterJ]);
 
             if (loading) return (
@@ -524,8 +662,8 @@
             return (
                 <div className="app-wrapper">
 
-                    {/* Modal 1: กรอกราคา */}
-                    {noticeRow && !labelPreview && !stickerPreview && (
+                    {/* Modal 1: กรอกราคา สำหรับใบแจ้งสินค้าหมด */}
+                    {noticeRow && !labelPreview && !stickerPromptRow && !stickerPreview && (
                         <OutOfStockModal 
                             row={noticeRow} 
                             onClose={() => setNoticeRow(null)} 
@@ -549,10 +687,22 @@
                         />
                     )}
 
-                    {/* Modal 3: พรีวิวสติกเกอร์บาร์โค้ด 100x25mm */}
+                    {/* Modal 2.5: คำนวณจำนวนสติกเกอร์ */}
+                    {stickerPromptRow && !stickerPreview && (
+                        <StickerQuantityModal
+                            row={stickerPromptRow}
+                            onClose={() => setStickerPromptRow(null)}
+                            onProceed={(copies) => {
+                                setStickerPreview({ row: stickerPromptRow, copies });
+                                setStickerPromptRow(null);
+                            }}
+                        />
+                    )}
+
+                    {/* Modal 3: พรีวิวสติกเกอร์บาร์โค้ด 100x25mm พร้อมพิมพ์จำนวนแผ่น */}
                     {stickerPreview && (
                         <StickerPreviewModal
-                            row={stickerPreview}
+                            data={stickerPreview}
                             onClose={() => setStickerPreview(null)}
                             printerIP={printerIP}
                         />
@@ -569,7 +719,7 @@
                                         <input type="text" placeholder="เช่น 192.168.1.50" value={printerIP} onChange={e=>setPrinterIP(e.target.value)} className="w-full p-4 border-2 border-yellow-100 rounded-2xl focus:border-pink-400 outline-none font-bold text-slate-700" />
                                     </div>
                                     <div className="bg-blue-50 p-4 rounded-2xl text-[11px] text-blue-600 font-medium leading-relaxed">
-                                        💡 หากระบุ IP ระบบจะส่ง ZPL ตรงไปที่เครื่องพิมพ์ (พิมพ์ 3 ดวงอัตโนมัติ)<br/>
+                                        💡 หากระบุ IP ระบบจะส่ง ZPL ตรงไปที่เครื่องพิมพ์ (ตามจำนวน Copy อัตโนมัติ)<br/>
                                         ⚠️ หากเว้นว่างไว้ จะใช้การสั่งพิมพ์ผ่านหน้าต่างคอมพิวเตอร์แทนจ้า
                                     </div>
                                     <div className="flex gap-2">
@@ -577,29 +727,6 @@
                                         <button onClick={()=>setIsSettingsOpen(false)} className="flex-1 p-4 bg-pink-500 text-white rounded-2xl font-bold shadow-lg">บันทึกจ้า</button>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Sticker print preview (กรณี Fallback ถ้าต้องเปิดผ่านหน้าเว็บตรงๆ) */}
-                    {printData && (
-                        <div className="print-only">
-                            <style type="text/css">
-                                {`@media print { @page { size: 32mm 25mm; margin: 0; } body { background: white !important; } }`}
-                            </style>
-                            <div className="sticker-container">
-                                {[1,2,3].map(n => (
-                                    <div key={n} className="sticker-unit">
-                                        <span className="sticker-title">{printData[3]}</span>
-                                        <div className="qr-wrapper">
-                                            <img className="qr-image" src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(printData[1])}`} alt="QR" />
-                                        </div>
-                                        <div className="sticker-footer">
-                                            <span>🎀 {printData[8]}</span>
-                                            <span>⭐️ {printData[9]}</span>
-                                        </div>
-                                    </div>
-                                ))}
                             </div>
                         </div>
                     )}
@@ -681,9 +808,9 @@
                                                             title="สร้างใบแจ้งสินค้าหมด">
                                                             <svg className="w-3 h-3 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                                         </button>
-                                                        {/* Sticker preview button */}
+                                                        {/* Sticker preview button -> เรียกหน้าต่างคำนวณจำนวนแผ่น */}
                                                         <button
-                                                            onClick={() => setStickerPreview(row)}
+                                                            onClick={() => setStickerPromptRow(row)}
                                                             className="p-1 md:p-2 bg-pink-50 text-pink-400 rounded-full hover:bg-pink-400 hover:text-white transition-all shadow-sm active:scale-90"
                                                             title="พรีวิวสติกเกอร์บาร์โค้ด">
                                                             <svg className="w-3 h-3 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
