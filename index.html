@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Sarabun', sans-serif; 
+            background: linear-gradient(135deg, #fff5f7 0%, #fffbeb 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .column-a-container {
+            border-left: 6px solid #f472b6;
+            padding-left: 0.75rem;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            will-change: transform;
+        }
+        
+        @media (min-width: 768px) {
+            .column-a-container { border-left-width: 10px; padding-left: 1.5rem; }
+        }
+        
+        .column-a-text {
+            display: inline-block;
+            transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.3s ease;
+            transform-origin: left center;
+            will-change: transform;
+            line-height: 1.2;
+        }
+
+        .group:hover .column-a-text {
+            transform: scale(1.6);
+            color: #ec4899;
+            z-index: 50;
+        }
+
+        .fit-table { table-layout: fixed; width: 100%; border-collapse: collapse; }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        .animate-item {
+            animation: slideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: scale(0.98) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .wrap-text { white-space: normal; word-wrap: break-word; word-break: break-word; }
+
+        /* ========== PRINT: Sticker 32x25mm ========== */
+        @media print {
+            body { background: white !important; margin: 0 !important; padding: 0 !important; }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+
+            /* Default sticker page */
+            @page { size: 32mm 25mm; margin: 0; }
+
+            /* A6 notice page override */
+            .a6-print-page { page-break-before: always; }
+            @page .a6-print-page { size: A6 portrait; margin: 0; }
+        }
+
+        .print-only { display: none; }
+
+        /* ========== A6 Notice Print CSS ========== */
+        @media print {
+            .notice-print-wrapper {
+                width: 105mm;
+                min-height: 148mm;
+                padding: 10mm 12mm;
+                box-sizing: border-box;
+                font-family: 'Sarabun', sans-serif;
+                background: white;
+                color: #111;
+                page-break-after: always;
+            }
+
+            .notice-print-wrapper * {
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        /* =================== SearchableSelect =================== */
+        const SearchableSelect = ({ id, label, options, value, onChange, placeholder, accentColor = "pink" }) => {
+            const [isOpen, setIsOpen] = useState(false);
+            const [search, setSearch] = useState('');
+            const wrapperRef = useRef(null);
+
+            useEffect(() => {
+                const handler = (e) => {
+                    if (wrapperRef.current && !wrapperRef.current.contains(e.target)) { setIsOpen(false); setSearch(''); }
+                };
+                document.addEventListener("mousedown", handler);
+                return () => document.removeEventListener("mousedown", handler);
+            }, []);
+
+            const filtered = useMemo(() => options.filter(o => String(o||'').toLowerCase().includes(search.toLowerCase())), [options, search]);
+            const cc = { pink: "ring-pink-300 border-pink-400 text-pink-700 bg-pink-50", yellow: "ring-yellow-300 border-yellow-400 text-yellow-700 bg-yellow-50" };
+
+            return (
+                <div className={`flex flex-col relative w-full ${isOpen ? 'z-[100]' : 'z-20'}`} ref={wrapperRef}>
+                    <label htmlFor={id} className="text-[10px] md:text-xs font-black text-pink-400 uppercase tracking-widest mb-1 px-2 flex items-center gap-1 no-print">✨ {label}</label>
+                    <div id={id} className={`relative w-full p-2 md:p-4 border-2 rounded-[1rem] md:rounded-[1.5rem] cursor-pointer transition-all flex justify-between items-center shadow-sm text-sm md:text-lg no-print ${isOpen ? cc[accentColor]+' shadow-lg scale-[1.02]' : 'bg-white border-yellow-100 hover:border-pink-200'}`} onClick={() => setIsOpen(!isOpen)}>
+                        <span className={`truncate mr-1 ${!value ? 'text-slate-300 italic' : 'font-black text-slate-700'}`}>{value || placeholder}</span>
+                        <svg className={`w-4 h-4 md:w-5 md:h-5 flex-shrink-0 text-pink-300 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
+                    </div>
+                    {isOpen && (
+                        <div className="absolute top-[110%] left-0 w-full bg-white border-2 border-pink-100 rounded-[1.2rem] md:rounded-[2rem] shadow-2xl z-[100] overflow-hidden animate-item no-print">
+                            <div className="p-2 md:p-3 border-b border-pink-50 bg-pink-50/30">
+                                <input autoFocus type="text" className="w-full p-2 text-sm md:text-base border-2 border-pink-100 rounded-xl outline-none focus:border-pink-400" placeholder="ค้นหา..." value={search} onChange={e => setSearch(e.target.value)} onClick={e => e.stopPropagation()} />
+                            </div>
+                            <div className="max-h-48 md:max-h-64 overflow-y-auto p-1">
+                                <div className={`p-2 md:p-3 text-sm md:text-lg rounded-lg mb-1 cursor-pointer transition-colors ${!value ? 'bg-yellow-100 text-yellow-700 font-bold' : 'text-slate-600 hover:bg-pink-50'}`} onClick={() => { onChange(''); setIsOpen(false); setSearch(''); }}>🌈 ทั้งหมด</div>
+                                {filtered.length > 0 ? filtered.map((opt, idx) => (
+                                    <div key={idx} className={`p-2 md:p-3 text-sm md:text-lg rounded-lg mb-1 cursor-pointer transition-colors ${value === opt ? 'bg-pink-100 text-pink-700 font-bold' : 'text-slate-600 hover:bg-pink-50'}`} onClick={() => { onChange(opt); setIsOpen(false); setSearch(''); }}>🍬 {opt}</div>
+                                )) : <div className="p-4 text-center text-slate-400 italic text-xs">ไม่เจอจ้า</div>}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        /* =================== OutOfStockModal =================== */
+        const OutOfStockModal = ({ row, onClose }) => {
+            const productName = row[3] || ''; // เปลี่ยนเป็นดึงจาก product_name ตรงๆ
+            const variantName = row[4] || ''; // เปลี่ยนเป็นดึงจาก variant_name ตรงๆ
+            const [price, setPrice] = useState('');
+            const [discount, setDiscount] = useState('');
+
+            const refundAmount = useMemo(() => {
+                const p = parseFloat(price) || 0;
+                const d = parseFloat(discount) || 0;
+                if (p <= 0) return '';
+                if (d > 0) return (p - d).toFixed(0);
+                return p.toFixed(0);
+            }, [price, discount]);
+
+            const handlePrint = () => {
+                window.__noticePrintData = {
+                    productName, variantName,
+                    originalPrice: price,
+                    discount,
+                    refundAmount
+                };
+                // inject print-only notice into DOM and print
+                const existing = document.getElementById('notice-print-area');
+                if (existing) existing.remove();
+
+                const wrapper = document.createElement('div');
+                wrapper.id = 'notice-print-area';
+                wrapper.className = 'print-only notice-print-wrapper';
+                wrapper.innerHTML = buildNoticeHTML({ productName, variantName, price, discount, refundAmount });
+                document.body.appendChild(wrapper);
+
+                // Override page size to A6 for this print
+                const styleEl = document.getElementById('a6-print-style') || document.createElement('style');
+                styleEl.id = 'a6-print-style';
+                styleEl.innerHTML = `@media print { @page { size: A6 portrait; margin: 8mm; } .sticker-container { display: none !important; } }`;
+                document.head.appendChild(styleEl);
+
+                setTimeout(() => {
+                    window.print();
+                    setTimeout(() => {
+                        styleEl.remove();
+                        wrapper.remove();
+                    }, 1500);
+                }, 300);
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[300] flex items-center justify-center p-4" onClick={onClose}>
+                    <div className="bg-white rounded-[2rem] shadow-2xl p-6 md:p-8 w-full max-w-lg border-4 border-pink-100 animate-item" onClick={e => e.stopPropagation()}>
+                        {/* Header */}
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center text-2xl">🚫</div>
+                            <div>
+                                <h3 className="text-xl font-black text-red-500">ใบแจ้งสินค้าหมด</h3>
+                                <p className="text-xs text-slate-400">พิมพ์ออกมาขนาด A6</p>
+                            </div>
+                        </div>
+
+                        {/* Product Info */}
+                        <div className="bg-pink-50 rounded-2xl p-4 mb-5">
+                            <p className="text-xs font-bold text-pink-400 uppercase mb-1">สินค้า</p>
+                            <p className="text-lg font-black text-pink-700">{productName}</p>
+                            <p className="text-sm text-pink-500">{variantName}</p>
+                        </div>
+
+                        {/* Price Inputs */}
+                        <div className="grid grid-cols-2 gap-3 mb-5">
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">ราคาสินค้า (บาท)</label>
+                                <input type="number" placeholder="เช่น 209" value={price} onChange={e => setPrice(e.target.value)}
+                                    className="w-full p-3 border-2 border-yellow-100 rounded-xl outline-none focus:border-pink-400 font-bold text-slate-700 text-lg" />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">ส่วนลด (บาท)</label>
+                                <input type="number" placeholder="เช่น 41" value={discount} onChange={e => setDiscount(e.target.value)}
+                                    className="w-full p-3 border-2 border-yellow-100 rounded-xl outline-none focus:border-pink-400 font-bold text-slate-700 text-lg" />
+                            </div>
+                        </div>
+
+                        {refundAmount && (
+                            <div className="bg-green-50 border-2 border-green-200 rounded-2xl p-4 mb-5 flex justify-between items-center">
+                                <span className="text-sm font-bold text-green-600">ยอดคืนเงิน</span>
+                                <span className="text-2xl font-black text-green-700">{refundAmount} บาท</span>
+                            </div>
+                        )}
+
+                        {/* Preview */}
+                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 mb-6 text-sm leading-relaxed text-slate-700 font-medium">
+                            <p>เนื่องจากสินค้า</p>
+                            <p className="font-black text-pink-700 text-base my-1">"{productName}{variantName ? ' : '+variantName : ''}"</p>
+                            <p>หมด</p>
+                            <p className="mt-2">ถ้าลูกค้าได้รับสินค้าแล้วรบกวนแอดไลน์ร้าน<br/>ดำเนินการแจ้งเลขบัญชี<br/>เพื่อให้ทางร้านคืนเงินให้ลูกค้า</p>
+                            {refundAmount ? (
+                                <p className="font-black text-slate-900 text-lg mt-1">
+                                    {price}{discount ? ` - ${discount}` : ''} = <span className="text-green-700">{refundAmount}</span> บาท ด้วยค่ะ
+                                </p>
+                            ) : (
+                                <p className="text-slate-400 italic text-xs mt-1">(กรอกจำนวนเงินด้านบน)</p>
+                            )}
+                            <p className="mt-2 font-bold text-sky-700">Line ID : @lamsangstore</p>
+                            <p className="mt-3 text-slate-500">ขออภัยในความไม่สะดวกค่ะ</p>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-3">
+                            <button onClick={onClose} className="flex-1 p-4 bg-slate-100 text-slate-500 rounded-2xl font-bold hover:bg-slate-200 transition-colors">ยกเลิก</button>
+                            <button onClick={handlePrint} disabled={!refundAmount}
+                                className={`flex-1 p-4 rounded-2xl font-black shadow-lg flex items-center justify-center gap-2 transition-all ${refundAmount ? 'bg-pink-500 text-white hover:bg-pink-600 active:scale-95' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                พิมพ์ PDF A6
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        function buildNoticeHTML({ productName, variantName, price, discount, refundAmount }) {
+            const priceText = price && discount
+                ? `${price} - ${discount} = ${refundAmount} บาท ด้วยค่ะ`
+                : price
+                    ? `${price} บาท ด้วยค่ะ`
+                    : `${refundAmount} บาท ด้วยค่ะ`;
+
+            return `
+            <div style="font-family:'Sarabun',sans-serif; font-size:14pt; line-height:1.9; color:#111; padding:4mm 0;">
+                <p style="margin:0 0 6mm 0; font-size:16pt; font-weight:900; color:#be185d; border-bottom:1.5px solid #fbcfe8; padding-bottom:4mm;">
+                    📋 แจ้งสินค้าหมดสต๊อก
+                </p>
+                <p style="margin:0;">เนื่องจากสินค้า</p>
+                <p style="margin:2mm 0 4mm; font-size:17pt; font-weight:900; color:#be185d; background:#fff0f5; border-radius:6px; padding:3mm 5mm; display:inline-block;">
+                    "${productName}${variantName ? ' : ' + variantName : ''}"
+                </p>
+                <p style="margin:0 0 4mm;">หมด</p>
+                <p style="margin:0;">ถ้าลูกค้าได้รับสินค้าแล้ว<br>รบกวนแอดไลน์ร้าน</p>
+                <p style="margin:1mm 0;">ดำเนินการแจ้งเลขบัญชี</p>
+                <p style="margin:0 0 4mm;">เพื่อให้ทางร้านคืนเงินให้ลูกค้า</p>
+                <p style="font-size:18pt; font-weight:900; color:#15803d; background:#f0fdf4; border-radius:6px; padding:3mm 5mm; margin:0 0 5mm;">
+                    ${priceText}
+                </p>
+                <p style="font-size:16pt; font-weight:900; color:#0369a1; margin:0 0 6mm;">
+                    Line ID : @lamsangstore
+                </p>
+                <p style="color:#555; font-style:italic; margin:0; border-top:1px dashed #e5e7eb; padding-top:4mm;">
+                    ขออภัยในความไม่สะดวกค่ะ 🙏
+                </p>
+            </div>`;
+        }
+
+        /* =================== Main App =================== */
+        // เปลี่ยน Labels ให้ตรงกับ Column ใหม่
+        const labelH = "รุ่น";
+        const labelI = "สี";
+        const labelJ = "ขนาด";
+
+        const App = () => {
+            const [rawData, setRawData] = useState([]);
+            const [headers, setHeaders] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
+            const [printData, setPrintData] = useState(null);
+            const [noticeRow, setNoticeRow] = useState(null);
+            const [printerIP, setPrinterIP] = useState('');
+            const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+            const [searchTerm, setSearchTerm] = useState('');
+            const [filterH, setFilterH] = useState('');
+            const [filterI, setFilterI] = useState('');
+            const [filterJ, setFilterJ] = useState('');
+
+            // 🔥 Firebase Config
+            const FIREBASE_URL = "https://lamsang-barcode-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+            const fetchData = async () => {
+                setLoading(true); setError(null);
+                try {
+                    const res = await fetch(`${FIREBASE_URL}/inventory.json`);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const json = await res.json();
+
+                    if (!json || !json.rows) {
+                        // ยังไม่มีข้อมูลใน Firebase แสดง demo
+                        const h = ["no","sku","CF Code","product_name","variant_name","stock","FALSE","รุ่น","สี","ขนาด"];
+                        h[16] = "ยังไม่มีข้อมูล - รอ Sync จาก Sheets";
+                        setHeaders(h);
+                        setRawData([]);
+                        setLoading(false);
+                        return;
+                    }
+
+                    // แปลง Firebase object → array rows
+                    const rows = Object.values(json.rows).map(r => [
+                        r.barcode      || "",   // [0] no
+                        r.sku          || "",   // [1] sku
+                        r.cf_code      || "",   // [2] CF Code
+                        r.product_name || "",   // [3] product_name
+                        r.variant_name || "",   // [4] variant_name
+                        r.stock        || "",   // [5] stock
+                        r.col_false    || "",   // [6] FALSE
+                        r.model        || "",   // [7] รุ่น
+                        r.color        || "",   // [8] สี
+                        r.size         || ""    // [9] ขนาด
+                    ]);
+
+                    const h = ["no","sku","CF Code","product_name","variant_name","stock","FALSE","รุ่น","สี","ขนาด"];
+                    h[16] = json.meta?.synced_at || "-";
+                    setHeaders(h);
+                    setRawData(rows);
+                    setLoading(false);
+                } catch(err) {
+                    setError("🔥 โหลดจาก Firebase ไม่ได้: " + err.message);
+                    setLoading(false);
+                }
+            };
+
+            useEffect(() => { fetchData(); }, []);
+
+            const dropdownOptions = useMemo(() => {
+                const h=new Set(), i=new Set(), j=new Set();
+                rawData.forEach(r => { if(r[7])h.add(r[7]); if(r[8])i.add(r[8]); if(r[9])j.add(r[9]); });
+                return { h:[...h].sort(), i:[...i].sort(), j:[...j].sort() };
+            }, [rawData]);
+
+            const filteredData = useMemo(() => rawData.filter(row => {
+                const vH=String(row[7]||'').toLowerCase(), vI=String(row[8]||'').toLowerCase(), vJ=String(row[9]||'').toLowerCase();
+                const s=searchTerm.toLowerCase();
+                // ค้นหาครอบคลุมถึง Barcode, SKU, CF Code, รุ่น, สี, ขนาด
+                const ok = !searchTerm || [String(row[0]),String(row[1]),String(row[2]),vH,vI,vJ].some(v=>v.includes(s));
+                return ok && (!filterH||vH===filterH.toLowerCase()) && (!filterI||vI===filterI.toLowerCase()) && (!filterJ||vJ===filterJ.toLowerCase());
+            }), [rawData, searchTerm, filterH, filterI, filterJ]);
+
+            const generateZPL = (row) => {
+                const title = String(row[3]).substring(0,25); // ใช้ product_name
+                const sku = String(row[1]); // sku
+                const footL = String(row[8]); // สี
+                const footR = String(row[9]); // ขนาด
+                return `^XA^CI28^PW256^LL200^MD20\n^FO10,15^A0N,28,28^FB236,1,0,C^FD${title}^FS\n^FO10,48^GB236,1,1^FS\n^FO65,60^BQN,2,4^FDQA,${sku}^FS\n^FO10,165^GB236,1,1^FS\n^FO10,175^A0N,22,22^FD${footL}^FS\n^FO128,175^A0N,22,22^A0R^FB118,1,0,R^FD${footR}^FS\n^PQ3^XZ`;
+            };
+
+            const handlePrintSticker = async (row) => {
+                if (printerIP) {
+                    try {
+                        await fetch(`http://${printerIP}/pstprnt`, { method:'POST', mode:'no-cors', body:generateZPL(row) });
+                        alert(`ส่งคำสั่งพิมพ์ ZPL ไปยัง ${printerIP} เรียบร้อยแล้วจ้า! 🍬`);
+                    } catch(err) { setPrintData(row); setTimeout(()=>window.print(),500); }
+                } else { setPrintData(row); setTimeout(()=>window.print(),500); }
+            };
+
+            if (loading) return (
+                <div className="flex h-screen items-center justify-center bg-[#fff5f7] p-6 text-center">
+                    <div className="bg-white p-10 rounded-[3rem] shadow-2xl flex flex-col items-center border-4 border-pink-100">
+                        <div className="w-16 h-16 border-8 border-yellow-200 border-t-pink-400 rounded-full animate-spin mb-6"></div>
+                        <p className="text-pink-500 font-black text-2xl">รวบรวมความสดใส...</p>
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="w-full max-w-7xl mx-auto p-2 md:p-6 lg:p-8 overflow-x-hidden">
+
+                    {/* Out-of-Stock Notice Modal */}
+                    {noticeRow && <OutOfStockModal row={noticeRow} onClose={() => setNoticeRow(null)} />}
+
+                    {/* Settings Modal */}
+                    {isSettingsOpen && (
+                        <div className="fixed inset-0 bg-pink-900/20 backdrop-blur-md z-[200] flex items-center justify-center p-4">
+                            <div className="bg-white rounded-[2.5rem] shadow-2xl p-8 w-full max-w-md border-4 border-pink-100 animate-item">
+                                <h3 className="text-2xl font-black text-pink-600 mb-6 flex items-center gap-2">⚙️ ตั้งค่าเครื่องพิมพ์ WiFi</h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-2">IP ของเครื่องพิมพ์</label>
+                                        <input type="text" placeholder="เช่น 192.168.1.50" value={printerIP} onChange={e=>setPrinterIP(e.target.value)} className="w-full p-4 border-2 border-yellow-100 rounded-2xl focus:border-pink-400 outline-none font-bold text-slate-700" />
+                                    </div>
+                                    <div className="bg-blue-50 p-4 rounded-2xl text-[11px] text-blue-600 font-medium leading-relaxed">
+                                        💡 หากระบุ IP ระบบจะส่ง ZPL ตรงไปที่เครื่องพิมพ์ (พิมพ์ 3 ดวงอัตโนมัติ)<br/>
+                                        ⚠️ หากเว้นว่างไว้ จะใช้การสั่งพิมพ์ผ่านหน้าต่างคอมพิวเตอร์แทนจ้า
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button onClick={()=>setIsSettingsOpen(false)} className="flex-1 p-4 bg-slate-100 text-slate-500 rounded-2xl font-bold">ยกเลิก</button>
+                                        <button onClick={()=>setIsSettingsOpen(false)} className="flex-1 p-4 bg-pink-500 text-white rounded-2xl font-bold shadow-lg">บันทึกจ้า</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Sticker print preview */}
+                    {printData && (
+                        <div className="print-only">
+                            <div className="sticker-container">
+                                {[1,2,3].map(n => (
+                                    <div key={n} className="sticker-unit">
+                                        <span className="sticker-title">{printData[3]}</span>
+                                        <div className="qr-wrapper">
+                                            <img className="qr-image" src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(printData[1])}`} alt="QR" />
+                                        </div>
+                                        <div className="sticker-footer">
+                                            <span>🎀 {printData[8]}</span>
+                                            <span>⭐️ {printData[9]}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Header */}
+                    <header className="glass-effect p-4 md:p-10 rounded-[1.5rem] md:rounded-[4rem] shadow-xl border-4 border-white mb-4 md:mb-10 relative overflow-hidden no-print">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-8 relative z-10">
+                            <div className="flex items-center gap-3 md:gap-8">
+                                <div className="w-12 h-12 md:w-24 md:h-24 bg-gradient-to-br from-pink-400 to-pink-500 rounded-[1rem] md:rounded-[2.5rem] flex-shrink-0 flex items-center justify-center shadow-xl text-white text-xl md:text-5xl">✨</div>
+                                <div>
+                                    <h1 className="text-xl md:text-5xl font-black text-pink-600 tracking-tight leading-tight">ระบบค้นหา Bar code</h1>
+                                    <p className="text-yellow-600 font-bold text-[9px] md:text-sm italic">อัปเดต: {headers[16] || '-'}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto">
+                                <div className="bg-yellow-400 text-yellow-900 px-3 py-1.5 md:px-10 md:py-6 rounded-[0.8rem] md:rounded-[2.5rem] shadow-lg flex flex-col items-center flex-1 md:flex-none border-b-4 border-yellow-500/20">
+                                    <span className="text-[8px] md:text-sm uppercase font-black opacity-70">พบข้อมูล</span>
+                                    <span className="text-lg md:text-4xl font-black leading-none">{filteredData.length}</span>
+                                </div>
+                                <button onClick={()=>setIsSettingsOpen(true)} className="p-2 md:p-6 bg-white border-2 border-pink-100 rounded-[0.8rem] md:rounded-[2rem] text-pink-400 shadow-md active:scale-90 transition-all">
+                                    <svg className="w-5 h-5 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                </button>
+                                <button onClick={fetchData} className="p-2 md:p-6 bg-white border-2 border-pink-100 rounded-[0.8rem] md:rounded-[2rem] text-pink-400 shadow-md active:scale-90 transition-all">
+                                    <svg className="w-5 h-5 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Filters */}
+                    <section className="bg-white/95 backdrop-blur-md p-3 md:p-10 rounded-[1.5rem] md:rounded-[4rem] shadow-xl border-4 border-pink-50 mb-4 md:mb-10 relative z-30 w-full no-print">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-8">
+                            <div className="flex flex-col w-full">
+                                <label className="text-[9px] md:text-xs font-black text-pink-400 uppercase tracking-widest mb-1 px-2 flex items-center gap-1">🔍 ค้นหา</label>
+                                <div className="relative">
+                                    <input type="text" className="w-full p-2.5 pl-9 md:p-5 md:pl-14 border-2 border-yellow-100 rounded-[1rem] md:rounded-[2rem] focus:border-pink-400 outline-none text-sm md:text-xl font-black text-slate-700" placeholder="พิมพ์ที่นี่จ้า..." value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} />
+                                    <div className="absolute left-3 top-2.5 md:left-5 md:top-5 text-pink-200 md:text-xl">🔍</div>
+                                </div>
+                            </div>
+                            <SearchableSelect id="h-sel" label={labelH} options={dropdownOptions.h} value={filterH} onChange={setFilterH} placeholder={`เลือก ${labelH}`} accentColor="yellow" />
+                            <SearchableSelect id="i-sel" label={labelI} options={dropdownOptions.i} value={filterI} onChange={setFilterI} placeholder={`เลือก ${labelI}`} accentColor="pink" />
+                            <SearchableSelect id="j-sel" label={labelJ} options={dropdownOptions.j} value={filterJ} onChange={setFilterJ} placeholder={`เลือก ${labelJ}`} accentColor="yellow" />
+                        </div>
+                    </section>
+
+                    {/* Table */}
+                    <div className="w-full relative z-10 bg-white rounded-[1.5rem] md:rounded-[4rem] shadow-2xl border-2 md:border-4 border-white overflow-hidden no-print">
+                        <div className="overflow-x-hidden">
+                            <table className="fit-table">
+                                <thead>
+                                    <tr className="bg-yellow-300 text-yellow-900 font-black">
+                                        <th className="p-3 md:p-8 text-[10px] md:text-xl uppercase tracking-widest text-left w-[36%]">{headers[0]||'A'} & {headers[1]||'B'}</th>
+                                        <th className="p-3 md:p-8 text-center w-[18%] uppercase tracking-widest">{labelH}</th>
+                                        <th className="p-3 md:p-8 text-center w-[18%] uppercase tracking-widest">{labelI}</th>
+                                        <th className="p-3 md:p-8 text-center w-[28%] uppercase tracking-widest">{labelJ}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredData.map((row, idx) => (
+                                        <tr key={idx} className="group border-b border-pink-50 last:border-0 odd:bg-white even:bg-pink-50/10 hover:bg-yellow-50/40 transition-colors duration-200">
+                                            <td className="p-3 md:p-10 align-top relative">
+                                                <div className="column-a-container">
+                                                    <span className="column-a-text text-pink-600 text-lg md:text-5xl font-black block tracking-tighter wrap-text uppercase" title={row[3]}>{row[0]||'---'}</span>
+                                                    <span className="text-[10px] md:text-xl text-yellow-600 font-bold mt-1 md:mt-4 block opacity-80 group-hover:opacity-100 transition-opacity leading-tight wrap-text">🌸 SKU: {row[1]||'-'} | 📝 CF: {row[2]||'-'}</span>
+                                                </div>
+                                                {/* Action Buttons */}
+                                                <div className="absolute top-2 right-2 flex gap-1">
+                                                    {/* Out-of-stock notice button */}
+                                                    <button
+                                                        onClick={() => setNoticeRow(row)}
+                                                        className="p-1.5 md:p-2 bg-red-50 text-red-400 rounded-full hover:bg-red-400 hover:text-white transition-all shadow-sm active:scale-90"
+                                                        title="พิมพ์ใบแจ้งสินค้าหมด A6">
+                                                        <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                                    </button>
+                                                    {/* Sticker print button */}
+                                                    <button
+                                                        onClick={() => handlePrintSticker(row)}
+                                                        className="p-1.5 md:p-2 bg-pink-50 text-pink-400 rounded-full hover:bg-pink-400 hover:text-white transition-all shadow-sm active:scale-90"
+                                                        title="พิมพ์สติกเกอร์บาร์โค้ด">
+                                                        <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                            <td className="p-2 md:p-8 text-center align-middle"><span className="inline-block px-2 py-1 md:px-5 md:py-3 bg-yellow-100 text-yellow-700 rounded-[0.5rem] md:rounded-[1.5rem] text-[9px] md:text-lg font-black w-full shadow-sm wrap-text leading-tight uppercase">📍 {row[7]}</span></td>
+                                            <td className="p-2 md:p-8 text-center align-middle"><span className="inline-block px-2 py-1 md:px-5 md:py-3 bg-pink-100 text-pink-700 rounded-[0.5rem] md:rounded-[1.5rem] text-[9px] md:text-lg font-black w-full shadow-sm wrap-text leading-tight uppercase">🎨 {row[8]}</span></td>
+                                            <td className="p-2 md:p-8 text-center align-middle"><span className="inline-block px-2 py-1 md:px-5 md:py-3 bg-white border border-pink-100 md:border-2 text-pink-400 rounded-[0.5rem] md:rounded-[1.5rem] text-[9px] md:text-lg font-bold w-full shadow-sm italic wrap-text leading-tight uppercase">📏 {row[9]}</span></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <footer className="mt-6 md:mt-10 p-4 md:p-6 text-center text-[8px] md:text-[10px] font-black text-yellow-600 uppercase tracking-[0.2em] w-full no-print">
+                        🍬 Happy Search • Direct WiFi Print Support • Out-of-Stock Notice A6 🍬
+                    </footer>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+
+    <!-- Sticker print CSS -->
+    <style>
+        @media print {
+            .sticker-unit {
+                width: 32mm; height: 23mm; margin-bottom: 2mm; padding: 1mm;
+                box-sizing: border-box; display: flex; flex-direction: column;
+                justify-content: space-between; align-items: center; text-align: center;
+                page-break-after: always; overflow: hidden; color: black; background: white;
+            }
+            .sticker-unit:last-child { page-break-after: auto; margin-bottom: 0; }
+            .sticker-title { font-size:8pt; font-weight:700; width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.2; border-bottom:0.1mm solid black; padding-bottom:0.5mm; }
+            .qr-wrapper { width:13mm; height:13mm; display:flex; justify-content:center; align-items:center; margin:0 auto; }
+            .qr-image { width:100%; height:100%; image-rendering:pixelated; }
+            .sticker-footer { font-size:6pt; font-weight:600; width:100%; display:flex; justify-content:space-between; border-top:0.1mm solid black; padding-top:0.5mm; line-height:1; }
+        }
+    </style>
+</body>
+</html>
