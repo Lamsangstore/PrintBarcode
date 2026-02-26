@@ -7,7 +7,7 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700;900&display=swap" rel="stylesheet">
     <style>
         body { 
             font-family: 'Sarabun', sans-serif; 
@@ -60,40 +60,13 @@
 
         .wrap-text { white-space: normal; word-wrap: break-word; word-break: break-word; }
 
-        /* ========== PRINT: Sticker 32x25mm ========== */
+        /* การซ่อน Element ตอนพิมพ์ */
         @media print {
             body { background: white !important; margin: 0 !important; padding: 0 !important; }
             .no-print { display: none !important; }
             .print-only { display: block !important; }
-
-            /* Default sticker page */
-            @page { size: 32mm 25mm; margin: 0; }
-
-            /* A6 notice page override */
-            .a6-print-page { page-break-before: always; }
-            @page .a6-print-page { size: A6 portrait; margin: 0; }
         }
-
         .print-only { display: none; }
-
-        /* ========== A6 Notice Print CSS ========== */
-        @media print {
-            .notice-print-wrapper {
-                width: 105mm;
-                min-height: 148mm;
-                padding: 10mm 12mm;
-                box-sizing: border-box;
-                font-family: 'Sarabun', sans-serif;
-                background: white;
-                color: #111;
-                page-break-after: always;
-            }
-
-            .notice-print-wrapper * {
-                print-color-adjust: exact;
-                -webkit-print-color-adjust: exact;
-            }
-        }
     </style>
 </head>
 <body>
@@ -143,51 +116,40 @@
             );
         };
 
-        /* =================== OutOfStockModal =================== */
-        const OutOfStockModal = ({ row, onClose }) => {
-            const productName = row[3] || ''; // ดึงจาก product_name
-            const variantName = row[4] || ''; // ดึงจาก variant_name
+        /* =================== OutOfStockModal (ฟอร์มกรอกราคาก่อนสร้างใบแปะหน้า) =================== */
+        const OutOfStockModal = ({ row, onClose, onGenerate }) => {
+            const productName = row[3] || ''; 
+            const variantName = row[4] || ''; 
+            const sku = row[1] || '';
             const [price, setPrice] = useState('');
             const [discount, setDiscount] = useState('');
 
             const refundAmount = useMemo(() => {
                 const p = parseFloat(price) || 0;
-                const d = parseFloat(discount) || 0;
                 if (p <= 0) return '';
-                if (d > 0) return (p - d).toFixed(0);
+                
+                let d = 0;
+                const discStr = String(discount).trim();
+                // เช็คว่ามีเครื่องหมาย % หรือไม่
+                if (discStr.endsWith('%')) {
+                    const percent = parseFloat(discStr.replace('%', '')) || 0;
+                    d = (p * percent) / 100;
+                } else {
+                    d = parseFloat(discStr) || 0;
+                }
+                
+                if (d > 0) return Math.max(0, p - d).toFixed(0);
                 return p.toFixed(0);
             }, [price, discount]);
 
-            const handlePrint = () => {
-                window.__noticePrintData = {
-                    productName, variantName,
-                    originalPrice: price,
-                    discount,
-                    refundAmount
-                };
-                // inject print-only notice into DOM and print
-                const existing = document.getElementById('notice-print-area');
-                if (existing) existing.remove();
+            const handleGenerate = () => {
+                let discText = discount ? `${discount}` : '0';
+                if(discount && !String(discount).includes('%')) discText += ' บาท';
 
-                const wrapper = document.createElement('div');
-                wrapper.id = 'notice-print-area';
-                wrapper.className = 'print-only notice-print-wrapper';
-                wrapper.innerHTML = buildNoticeHTML({ productName, variantName, price, discount, refundAmount });
-                document.body.appendChild(wrapper);
-
-                // Override page size to A6 for this print
-                const styleEl = document.getElementById('a6-print-style') || document.createElement('style');
-                styleEl.id = 'a6-print-style';
-                styleEl.innerHTML = `@media print { @page { size: A6 portrait; margin: 8mm; } .sticker-container { display: none !important; } }`;
-                document.head.appendChild(styleEl);
-
-                setTimeout(() => {
-                    window.print();
-                    setTimeout(() => {
-                        styleEl.remove();
-                        wrapper.remove();
-                    }, 1500);
-                }, 300);
+                onGenerate({
+                    productName, variantName, sku,
+                    originalPrice: price, discountText: discText, refundAmount
+                });
             };
 
             return (
@@ -195,18 +157,18 @@
                     <div className="bg-white rounded-[2rem] shadow-2xl p-6 md:p-8 w-full max-w-lg border-4 border-pink-100 animate-item" onClick={e => e.stopPropagation()}>
                         {/* Header */}
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center text-2xl">🚫</div>
+                            <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center text-2xl">📝</div>
                             <div>
-                                <h3 className="text-xl font-black text-red-500">ใบแจ้งสินค้าหมด</h3>
-                                <p className="text-xs text-slate-400">พิมพ์ออกมาขนาด A6</p>
+                                <h3 className="text-xl font-black text-red-500">สร้างใบแปะหน้า (คืนเงิน)</h3>
+                                <p className="text-xs text-slate-400">กรอกข้อมูลเพื่อสร้างใบปะหน้าสินค้าหมด</p>
                             </div>
                         </div>
 
                         {/* Product Info */}
-                        <div className="bg-pink-50 rounded-2xl p-4 mb-5">
-                            <p className="text-xs font-bold text-pink-400 uppercase mb-1">สินค้า</p>
-                            <p className="text-lg font-black text-pink-700">{productName}</p>
-                            <p className="text-sm text-pink-500">{variantName}</p>
+                        <div className="bg-pink-50 rounded-2xl p-4 mb-5 border border-pink-100">
+                            <p className="text-xs font-bold text-pink-400 uppercase mb-1">สินค้าที่หมดสต๊อก</p>
+                            <p className="text-lg font-black text-pink-700 leading-tight">{productName}</p>
+                            <p className="text-sm text-pink-500 mt-1">ตัวเลือก: {variantName || '-'}</p>
                         </div>
 
                         {/* Price Inputs */}
@@ -217,43 +179,26 @@
                                     className="w-full p-3 border-2 border-yellow-100 rounded-xl outline-none focus:border-pink-400 font-bold text-slate-700 text-lg" />
                             </div>
                             <div>
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">ส่วนลด (บาท)</label>
-                                <input type="number" placeholder="เช่น 41" value={discount} onChange={e => setDiscount(e.target.value)}
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">ส่วนลด (บาท หรือ %)</label>
+                                <input type="text" placeholder="เช่น 41 หรือ 10%" value={discount} onChange={e => setDiscount(e.target.value)}
                                     className="w-full p-3 border-2 border-yellow-100 rounded-xl outline-none focus:border-pink-400 font-bold text-slate-700 text-lg" />
                             </div>
                         </div>
 
                         {refundAmount && (
-                            <div className="bg-green-50 border-2 border-green-200 rounded-2xl p-4 mb-5 flex justify-between items-center">
-                                <span className="text-sm font-bold text-green-600">ยอดคืนเงิน</span>
+                            <div className="bg-green-50 border-2 border-green-200 rounded-2xl p-4 mb-6 flex justify-between items-center">
+                                <span className="text-sm font-bold text-green-600">ยอดเงินที่ต้องคืน</span>
                                 <span className="text-2xl font-black text-green-700">{refundAmount} บาท</span>
                             </div>
                         )}
 
-                        {/* Preview */}
-                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 mb-6 text-sm leading-relaxed text-slate-700 font-medium">
-                            <p>เนื่องจากสินค้า</p>
-                            <p className="font-black text-pink-700 text-base my-1">"{productName}{variantName ? ' : '+variantName : ''}"</p>
-                            <p>หมด</p>
-                            <p className="mt-2">ถ้าลูกค้าได้รับสินค้าแล้วรบกวนแอดไลน์ร้าน<br/>ดำเนินการแจ้งเลขบัญชี<br/>เพื่อให้ทางร้านคืนเงินให้ลูกค้า</p>
-                            {refundAmount ? (
-                                <p className="font-black text-slate-900 text-lg mt-1">
-                                    {price}{discount ? ` - ${discount}` : ''} = <span className="text-green-700">{refundAmount}</span> บาท ด้วยค่ะ
-                                </p>
-                            ) : (
-                                <p className="text-slate-400 italic text-xs mt-1">(กรอกจำนวนเงินด้านบน)</p>
-                            )}
-                            <p className="mt-2 font-bold text-sky-700">Line ID : @lamsangstore</p>
-                            <p className="mt-3 text-slate-500">ขออภัยในความไม่สะดวกค่ะ</p>
-                        </div>
-
                         {/* Actions */}
                         <div className="flex gap-3">
                             <button onClick={onClose} className="flex-1 p-4 bg-slate-100 text-slate-500 rounded-2xl font-bold hover:bg-slate-200 transition-colors">ยกเลิก</button>
-                            <button onClick={handlePrint} disabled={!refundAmount}
+                            <button onClick={handleGenerate} disabled={!refundAmount}
                                 className={`flex-1 p-4 rounded-2xl font-black shadow-lg flex items-center justify-center gap-2 transition-all ${refundAmount ? 'bg-pink-500 text-white hover:bg-pink-600 active:scale-95' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                                พิมพ์ PDF A6
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                ดูตัวอย่างใบแปะหน้า
                             </button>
                         </div>
                     </div>
@@ -261,37 +206,206 @@
             );
         };
 
-        function buildNoticeHTML({ productName, variantName, price, discount, refundAmount }) {
-            const priceText = price && discount
-                ? `${price} - ${discount} = ${refundAmount} บาท ด้วยค่ะ`
-                : price
-                    ? `${price} บาท ด้วยค่ะ`
-                    : `${refundAmount} บาท ด้วยค่ะ`;
+        /* =================== Marketplace Label Template (หน้าตาใบปะหน้า) =================== */
+        const MarketplaceLabelTemplate = ({ data }) => {
+            return (
+                <div className="w-[105mm] h-[148mm] bg-white text-black box-border relative border-[3px] border-black flex flex-col mx-auto font-sans overflow-hidden" style={{ fontFamily: "'Sarabun', sans-serif" }}>
+                    
+                    <div className="p-3 flex-grow flex flex-col">
+                        {/* Header Zone */}
+                        <div className="flex justify-between items-start border-b-[3px] border-black pb-2 mb-2">
+                            <div className="flex items-center gap-2">
+                                <div className="w-10 h-10 bg-black text-white flex items-center justify-center font-black text-xl rounded-sm tracking-tighter">LS</div>
+                                <div>
+                                    <h1 className="font-black text-xl leading-none uppercase tracking-wide">LAMSANG</h1>
+                                    <p className="text-[10px] font-bold mt-0.5 tracking-widest text-gray-700">STORE OFFICIAL</p>
+                                </div>
+                            </div>
+                            <div className="flex flex-col items-end">
+                                <div className="bg-black text-white px-3 py-1 font-black text-lg rounded-sm tracking-widest">
+                                    REFUND
+                                </div>
+                                <p className="text-[9px] font-bold mt-1">ใบแจ้งสินค้าหมด / คืนเงิน</p>
+                            </div>
+                        </div>
 
-            return `
-            <div style="font-family:'Sarabun',sans-serif; font-size:14pt; line-height:1.9; color:#111; padding:4mm 0;">
-                <p style="margin:0 0 6mm 0; font-size:16pt; font-weight:900; color:#be185d; border-bottom:1.5px solid #fbcfe8; padding-bottom:4mm;">
-                    📋 แจ้งสินค้าหมดสต๊อก
-                </p>
-                <p style="margin:0;">เนื่องจากสินค้า</p>
-                <p style="margin:2mm 0 4mm; font-size:17pt; font-weight:900; color:#be185d; background:#fff0f5; border-radius:6px; padding:3mm 5mm; display:inline-block;">
-                    "${productName}${variantName ? ' : ' + variantName : ''}"
-                </p>
-                <p style="margin:0 0 4mm;">หมด</p>
-                <p style="margin:0;">ถ้าลูกค้าได้รับสินค้าแล้ว<br>รบกวนแอดไลน์ร้าน</p>
-                <p style="margin:1mm 0;">ดำเนินการแจ้งเลขบัญชี</p>
-                <p style="margin:0 0 4mm;">เพื่อให้ทางร้านคืนเงินให้ลูกค้า</p>
-                <p style="font-size:18pt; font-weight:900; color:#15803d; background:#f0fdf4; border-radius:6px; padding:3mm 5mm; margin:0 0 5mm;">
-                    ${priceText}
-                </p>
-                <p style="font-size:16pt; font-weight:900; color:#0369a1; margin:0 0 6mm;">
-                    Line ID : @lamsangstore
-                </p>
-                <p style="color:#555; font-style:italic; margin:0; border-top:1px dashed #e5e7eb; padding-top:4mm;">
-                    ขออภัยในความไม่สะดวกค่ะ 🙏
-                </p>
-            </div>`;
-        }
+                        {/* Warning Banner */}
+                        <div className="bg-gray-100 border-[3px] border-black p-2 mb-2 text-center">
+                            <h2 className="font-black text-lg tracking-wide">⚠️ สินค้าหมดสต๊อก ⚠️</h2>
+                            <p className="text-xs font-bold mt-0.5 text-gray-800">โปรดติดต่อร้านค้าเพื่อรับเงินคืน ตามยอดด้านล่าง</p>
+                        </div>
+
+                        {/* Product & SKU QR Zone */}
+                        <div className="flex-grow flex flex-col border-[3px] border-black mb-2 bg-white">
+                            <div className="bg-black text-white text-[9px] font-black py-1 px-2 uppercase tracking-widest flex justify-between">
+                                <span>รายการสินค้า (Item Details)</span>
+                                <span>QTY: 0</span>
+                            </div>
+                            <div className="flex p-2 justify-between items-center h-full">
+                                <div className="flex-1 pr-2 flex flex-col justify-center">
+                                    <p className="font-black text-base leading-snug">{data.productName}</p>
+                                    <p className="text-xs text-gray-700 mt-1">ตัวเลือก: <span className="font-bold text-black">{data.variantName || '-'}</span></p>
+                                    <p className="text-xs text-gray-700 mt-0.5">SKU: <span className="font-bold text-black">{data.sku || '-'}</span></p>
+                                </div>
+                                {data.sku && (
+                                    <div className="flex flex-col items-center justify-center pl-2 border-l-[2px] border-gray-300">
+                                        {/* QR SKU ปรับขนาดให้เล็ก (w-12 h-12 = 48px) */}
+                                        <img src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(data.sku)}`} alt="SKU QR" className="w-12 h-12" />
+                                        <span className="text-[8px] font-black mt-1 uppercase tracking-widest text-gray-600">SKU QR</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Calculation */}
+                        <div className="border-[3px] border-black p-2 flex justify-between items-center bg-gray-50 mb-1">
+                            <div className="text-xs font-bold text-gray-700">
+                                <p>ราคาสินค้า: {data.originalPrice || 0} บาท</p>
+                                <p className="mt-0.5">ส่วนลด: {data.discountText || '0 บาท'}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[9px] font-black mb-0.5 uppercase tracking-wider text-gray-500">ยอดเงินคืนสุทธิ</p>
+                                <div className="text-2xl font-black text-black">
+                                    ฿ {data.refundAmount}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Footer/Contact - Placed perfectly at the bottom edge */}
+                    <div className="border-t-[3px] border-black flex items-stretch mt-auto bg-yellow-50 h-[36mm]">
+                        <div className="w-2/3 p-2 flex flex-col justify-center border-r-[3px] border-black">
+                            <p className="font-black text-[12px] mb-1.5 bg-black text-white inline-block px-2 py-0.5 self-start">ขั้นตอนการรับเงินคืน:</p>
+                            <ol className="text-[10px] space-y-1.5 list-decimal list-inside font-bold text-gray-800 leading-tight">
+                                <li>แอด Line ID: <span className="text-[11px] bg-white px-1.5 py-0.5 border border-black">@lamsangstore</span></li>
+                                <li>ถ่ายรูปใบปะหน้านี้ส่งให้แอดมิน</li>
+                                <li>แจ้งเลขที่บัญชีเพื่อรับยอดโอนคืน</li>
+                            </ol>
+                        </div>
+                        <div className="w-1/3 bg-black text-white p-2 flex flex-col items-center justify-center">
+                            <div className="bg-white p-1 rounded-sm mb-1">
+                                {/* QR Line ปรับขนาดให้ใหญ่กว่า SKU ชัดเจน (w-16 h-16 = 64px ถึง 72px) */}
+                                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https://line.me/R/ti/p/@lamsangstore`} alt="Line QR" className="w-16 h-16" />
+                            </div>
+                            <p className="text-[8px] font-black mt-0.5 text-center tracking-widest uppercase">สแกนแอดไลน์</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        /* =================== Label Preview Modal (หน้าจอโชว์ใบแปะหน้า ก่อนพิมพ์) =================== */
+        const LabelPreviewModal = ({ data, onClose, onBack }) => {
+            return (
+                <div className="fixed inset-0 bg-slate-900/95 z-[400] flex flex-col items-center overflow-y-auto pt-6 pb-20 print:bg-white print:p-0 print:fixed print:inset-0">
+                    {/* แจ้ง CSS ให้พิมพ์เฉพาะหน้านี้แบบ A6 */}
+                    <style type="text/css">
+                        {`@media print { 
+                            @page { size: 105mm 148mm; margin: 0; } 
+                            body { background: white !important; }
+                            .print-hide { display: none !important; }
+                        }`}
+                    </style>
+
+                    {/* Toolbar (ซ่อนตอนพิมพ์) */}
+                    <div className="w-full max-w-2xl px-4 flex justify-between items-center mb-6 print-hide">
+                        <button onClick={onBack} className="px-5 py-2.5 bg-slate-700 text-white rounded-xl font-bold hover:bg-slate-600 transition-colors flex items-center gap-2">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                            กลับไปแก้ไข
+                        </button>
+                        <div className="flex gap-3">
+                            <button onClick={onClose} className="px-5 py-2.5 bg-slate-700 text-white rounded-xl font-bold hover:bg-slate-600 transition-colors">
+                                ปิด
+                            </button>
+                            <button onClick={() => window.print()} className="px-8 py-2.5 bg-pink-500 text-white rounded-xl font-black shadow-lg hover:bg-pink-400 transition-colors flex items-center gap-2">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                                สั่งพิมพ์ A6
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* ตัว Label */}
+                    <div className="bg-white shadow-[0_0_40px_rgba(0,0,0,0.5)] print:shadow-none print:m-0 border border-gray-200 print:border-none">
+                        <MarketplaceLabelTemplate data={data} />
+                    </div>
+                </div>
+            );
+        };
+
+        /* =================== Sticker Preview Modal (100x25mm 3-up) =================== */
+        const StickerPreviewModal = ({ row, onClose, printerIP }) => {
+            const productName = String(row[3] || '');
+            const sku = String(row[1] || '');
+            const variantName = String(row[4] || '');
+
+            // ZPL ที่ปรับสำหรับขนาด 100x25mm (กว้าง 800 จุด สูง 200 จุด) วาง 3 แถวสมมาตร
+            const generateZPL = () => {
+                return `^XA^CI28^PW800^LL200^MD20
+^FO10,15^A0N,22,22^FB246,1,0,C^FD${productName.substring(0,25)}^FS
+^FO85,45^BQN,2,4^FDQA,${sku}^FS
+^FO10,165^A0N,20,20^FB246,1,0,C^FD${variantName.substring(0,25)}^FS
+^FO276,15^A0N,22,22^FB246,1,0,C^FD${productName.substring(0,25)}^FS
+^FO351,45^BQN,2,4^FDQA,${sku}^FS
+^FO276,165^A0N,20,20^FB246,1,0,C^FD${variantName.substring(0,25)}^FS
+^FO542,15^A0N,22,22^FB246,1,0,C^FD${productName.substring(0,25)}^FS
+^FO617,45^BQN,2,4^FDQA,${sku}^FS
+^FO542,165^A0N,20,20^FB246,1,0,C^FD${variantName.substring(0,25)}^FS
+^PQ1^XZ`;
+            };
+
+            const handlePrint = async () => {
+                if (printerIP) {
+                    try {
+                        await fetch(`http://${printerIP}/pstprnt`, { method:'POST', mode:'no-cors', body:generateZPL() });
+                        alert(`ส่งคำสั่งพิมพ์ ZPL ไปยัง ${printerIP} เรียบร้อยแล้วจ้า! 🍬`);
+                    } catch(err) { window.print(); }
+                } else {
+                    window.print();
+                }
+            };
+
+            return (
+                <div className="fixed inset-0 bg-slate-900/95 z-[400] flex flex-col items-center justify-center p-4 print:bg-white print:p-0 print:block">
+                    {/* บังคับขนาดพิมพ์ให้เป็น 100x25 mm */}
+                    <style type="text/css">
+                        {`@media print { 
+                            @page { size: 100mm 25mm; margin: 0; } 
+                            body { background: white !important; }
+                            .print-hide { display: none !important; }
+                        }`}
+                    </style>
+
+                    {/* Toolbar */}
+                    <div className="w-full max-w-2xl px-4 flex justify-between items-center mb-6 print-hide">
+                        <button onClick={onClose} className="px-5 py-2.5 bg-slate-700 text-white rounded-xl font-bold hover:bg-slate-600 transition-colors flex items-center gap-2">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                            กลับ
+                        </button>
+                        <button onClick={handlePrint} className="px-8 py-2.5 bg-pink-500 text-white rounded-xl font-black shadow-lg hover:bg-pink-400 transition-colors flex items-center gap-2">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                            {printerIP ? 'พิมพ์ผ่าน WiFi' : 'สั่งพิมพ์สติกเกอร์ (100x25mm)'}
+                        </button>
+                    </div>
+
+                    {/* ตัว Label พรีวิว */}
+                    <div className="bg-white w-[100mm] h-[25mm] flex box-border shadow-[0_0_40px_rgba(0,0,0,0.5)] print:shadow-none print:m-0 overflow-hidden text-black font-sans" style={{ fontFamily: "'Sarabun', sans-serif" }}>
+                        {[1, 2, 3].map((num) => (
+                            <div key={num} className="flex-1 flex flex-col items-center justify-between p-[1mm] border-r border-dashed border-gray-300 last:border-r-0 h-full w-[33.33mm] box-border overflow-hidden">
+                                <div className="text-[7.5pt] font-extrabold w-full text-center whitespace-nowrap overflow-hidden text-ellipsis leading-none pt-[1mm]">
+                                    {productName}
+                                </div>
+                                <div className="flex-grow flex items-center justify-center my-[0.5mm]">
+                                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(sku)}`} alt="QR" className="h-[12mm] w-[12mm]" style={{ imageRendering: 'pixelated' }} />
+                                </div>
+                                <div className="text-[6.5pt] font-bold w-full text-center whitespace-nowrap overflow-hidden text-ellipsis leading-none pb-[1mm]">
+                                    {variantName}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
 
         /* =================== Main App =================== */
         const labelH = "รุ่น";
@@ -303,8 +417,12 @@
             const [headers, setHeaders] = useState([]);
             const [loading, setLoading] = useState(true);
             const [error, setError] = useState(null);
-            const [printData, setPrintData] = useState(null);
-            const [noticeRow, setNoticeRow] = useState(null);
+            
+            const [stickerPreview, setStickerPreview] = useState(null); // พรีวิวสติกเกอร์ 100x25mm
+            const [noticeRow, setNoticeRow] = useState(null); // Row สำหรับเปิด Modal กรอกราคา
+            const [labelPreview, setLabelPreview] = useState(null); // Data สำหรับหน้า Preview ใบแปะหน้า A6
+            const [printData, setPrintData] = useState(null); // สำหรับกรณี fallback สติกเกอร์จิ๋ว
+
             const [printerIP, setPrinterIP] = useState('');
             const [isSettingsOpen, setIsSettingsOpen] = useState(false);
             const [searchTerm, setSearchTerm] = useState('');
@@ -318,7 +436,6 @@
             const fetchData = async () => {
                 setLoading(true); setError(null);
                 try {
-                    // ป้องกันระบบจำค่า Cache เก่า (เติม ?t=เวลาปัจจุบัน)
                     const res = await fetch(`${FIREBASE_URL}/inventory.json?t=${new Date().getTime()}`);
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     const json = await res.json();
@@ -332,16 +449,13 @@
                         return;
                     }
 
-                    // 🛠️ แก้ปัญหา Firebase อ่าน Barcode ที่เป็นตัวเลขล้วนสลับเป็น Array
-                    // เราจะกรองเอาเฉพาะแถวที่มีข้อมูลจริงๆ ทิ้งแถวที่เกิดจากการแปลงร่างผิดพลาดของ Firebase
                     let rawRowsList = [];
                     if (Array.isArray(json.rows)) {
-                        rawRowsList = json.rows; // กรณีถูกบังคับเป็น Array
+                        rawRowsList = json.rows;
                     } else {
-                        rawRowsList = Object.values(json.rows); // กรณีปกติ (Object)
+                        rawRowsList = Object.values(json.rows);
                     }
 
-                    // กรองเอาบรรทัดที่ว่าง (null) ออกไป
                     const validRows = rawRowsList.filter(r => r && typeof r === 'object' && (r.barcode || r.item_no));
 
                     const rows = validRows.map(r => [
@@ -380,29 +494,10 @@
             const filteredData = useMemo(() => rawData.filter(row => {
                 const vH=String(row[7]||'').toLowerCase(), vI=String(row[8]||'').toLowerCase(), vJ=String(row[9]||'').toLowerCase();
                 const s=searchTerm.toLowerCase();
-                // ค้นหาครอบคลุมถึง Barcode, SKU, CF Code, รุ่น, สี, ขนาด
                 const ok = !searchTerm || [String(row[0]),String(row[1]),String(row[2]),vH,vI,vJ].some(v=>v.includes(s));
                 return ok && (!filterH||vH===filterH.toLowerCase()) && (!filterI||vI===filterI.toLowerCase()) && (!filterJ||vJ===filterJ.toLowerCase());
             }), [rawData, searchTerm, filterH, filterI, filterJ]);
 
-            const generateZPL = (row) => {
-                const title = String(row[3]).substring(0,25); // ใช้ product_name
-                const sku = String(row[1]); // sku
-                const footL = String(row[8]); // สี
-                const footR = String(row[9]); // ขนาด
-                return `^XA^CI28^PW256^LL200^MD20\n^FO10,15^A0N,28,28^FB236,1,0,C^FD${title}^FS\n^FO10,48^GB236,1,1^FS\n^FO65,60^BQN,2,4^FDQA,${sku}^FS\n^FO10,165^GB236,1,1^FS\n^FO10,175^A0N,22,22^FD${footL}^FS\n^FO128,175^A0N,22,22^A0R^FB118,1,0,R^FD${footR}^FS\n^PQ3^XZ`;
-            };
-
-            const handlePrintSticker = async (row) => {
-                if (printerIP) {
-                    try {
-                        await fetch(`http://${printerIP}/pstprnt`, { method:'POST', mode:'no-cors', body:generateZPL(row) });
-                        alert(`ส่งคำสั่งพิมพ์ ZPL ไปยัง ${printerIP} เรียบร้อยแล้วจ้า! 🍬`);
-                    } catch(err) { setPrintData(row); setTimeout(()=>window.print(),500); }
-                } else { setPrintData(row); setTimeout(()=>window.print(),500); }
-            };
-
-            // แสดงหน้าจอโหลดข้อมูล
             if (loading) return (
                 <div className="flex h-screen items-center justify-center bg-[#fff5f7] p-6 text-center">
                     <div className="bg-white p-10 rounded-[3rem] shadow-2xl flex flex-col items-center border-4 border-pink-100">
@@ -412,7 +507,6 @@
                 </div>
             );
 
-            // แสดงหน้าจอถ้ามี Error
             if (error) return (
                 <div className="flex h-screen items-center justify-center bg-[#fff5f7] p-6 text-center">
                     <div className="bg-white p-10 rounded-[3rem] shadow-2xl flex flex-col items-center border-4 border-red-200">
@@ -425,10 +519,41 @@
             );
 
             return (
-                <div className="w-full max-w-7xl mx-auto p-2 md:p-6 lg:p-8 overflow-x-hidden">
+                <div className="w-full max-w-7xl mx-auto p-2 md:p-6 lg:p-8 overflow-x-hidden no-print">
 
-                    {/* Out-of-Stock Notice Modal */}
-                    {noticeRow && <OutOfStockModal row={noticeRow} onClose={() => setNoticeRow(null)} />}
+                    {/* Modal 1: กรอกราคา */}
+                    {noticeRow && !labelPreview && !stickerPreview && (
+                        <OutOfStockModal 
+                            row={noticeRow} 
+                            onClose={() => setNoticeRow(null)} 
+                            onGenerate={(data) => {
+                                setLabelPreview(data);
+                                setNoticeRow(null);
+                            }}
+                        />
+                    )}
+
+                    {/* Modal 2: พรีวิวใบปะหน้าก่อนพิมพ์ (เต็มจอ A6) */}
+                    {labelPreview && (
+                        <LabelPreviewModal 
+                            data={labelPreview}
+                            onClose={() => setLabelPreview(null)}
+                            onBack={() => {
+                                const originalRow = rawData.find(r => r[1] === labelPreview.sku);
+                                setNoticeRow(originalRow);
+                                setLabelPreview(null);
+                            }}
+                        />
+                    )}
+
+                    {/* Modal 3: พรีวิวสติกเกอร์บาร์โค้ด 100x25mm */}
+                    {stickerPreview && (
+                        <StickerPreviewModal
+                            row={stickerPreview}
+                            onClose={() => setStickerPreview(null)}
+                            printerIP={printerIP}
+                        />
+                    )}
 
                     {/* Settings Modal */}
                     {isSettingsOpen && (
@@ -453,9 +578,12 @@
                         </div>
                     )}
 
-                    {/* Sticker print preview */}
+                    {/* Sticker print preview (กรณี Fallback ถ้าต้องเปิดผ่านหน้าเว็บตรงๆ) */}
                     {printData && (
                         <div className="print-only">
+                            <style type="text/css">
+                                {`@media print { @page { size: 32mm 25mm; margin: 0; } body { background: white !important; } }`}
+                            </style>
                             <div className="sticker-container">
                                 {[1,2,3].map(n => (
                                     <div key={n} className="sticker-unit">
@@ -474,7 +602,7 @@
                     )}
 
                     {/* Header */}
-                    <header className="glass-effect p-4 md:p-10 rounded-[1.5rem] md:rounded-[4rem] shadow-xl border-4 border-white mb-4 md:mb-10 relative overflow-hidden no-print">
+                    <header className="glass-effect p-4 md:p-10 rounded-[1.5rem] md:rounded-[4rem] shadow-xl border-4 border-white mb-4 md:mb-10 relative overflow-hidden">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-8 relative z-10">
                             <div className="flex items-center gap-3 md:gap-8">
                                 <div className="w-12 h-12 md:w-24 md:h-24 bg-gradient-to-br from-pink-400 to-pink-500 rounded-[1rem] md:rounded-[2.5rem] flex-shrink-0 flex items-center justify-center shadow-xl text-white text-xl md:text-5xl">✨</div>
@@ -499,7 +627,7 @@
                     </header>
 
                     {/* Filters */}
-                    <section className="bg-white/95 backdrop-blur-md p-3 md:p-10 rounded-[1.5rem] md:rounded-[4rem] shadow-xl border-4 border-pink-50 mb-4 md:mb-10 relative z-30 w-full no-print">
+                    <section className="bg-white/95 backdrop-blur-md p-3 md:p-10 rounded-[1.5rem] md:rounded-[4rem] shadow-xl border-4 border-pink-50 mb-4 md:mb-10 relative z-30 w-full">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-8">
                             <div className="flex flex-col w-full">
                                 <label className="text-[9px] md:text-xs font-black text-pink-400 uppercase tracking-widest mb-1 px-2 flex items-center gap-1">🔍 ค้นหา</label>
@@ -515,46 +643,48 @@
                     </section>
 
                     {/* Table */}
-                    <div className="w-full relative z-10 bg-white rounded-[1.5rem] md:rounded-[4rem] shadow-2xl border-2 md:border-4 border-white overflow-hidden no-print">
+                    <div className="w-full relative z-10 bg-white rounded-[1.5rem] md:rounded-[4rem] shadow-2xl border-2 md:border-4 border-white overflow-hidden">
                         <div className="overflow-x-hidden">
                             <table className="fit-table">
                                 <thead>
                                     <tr className="bg-yellow-300 text-yellow-900 font-black">
-                                        <th className="p-3 md:p-8 text-[10px] md:text-xl uppercase tracking-widest text-left w-[36%]">{headers[0]||'A'} & {headers[1]||'B'}</th>
-                                        <th className="p-3 md:p-8 text-center w-[18%] uppercase tracking-widest">{labelH}</th>
-                                        <th className="p-3 md:p-8 text-center w-[18%] uppercase tracking-widest">{labelI}</th>
-                                        <th className="p-3 md:p-8 text-center w-[28%] uppercase tracking-widest">{labelJ}</th>
+                                        <th className="p-2 md:p-8 text-[9px] md:text-xl uppercase tracking-widest text-left w-[25%]">{headers[0]||'A'} & {headers[1]||'B'}</th>
+                                        <th className="p-2 md:p-8 text-center w-[39%] uppercase tracking-widest text-[10px] md:text-xl">{labelH}</th>
+                                        <th className="p-2 md:p-8 text-center w-[16%] uppercase tracking-widest text-[10px] md:text-xl">{labelI}</th>
+                                        <th className="p-2 md:p-8 text-center w-[20%] uppercase tracking-widest text-[10px] md:text-xl">{labelJ}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {filteredData.map((row, idx) => (
                                         <tr key={idx} className="group border-b border-pink-50 last:border-0 odd:bg-white even:bg-pink-50/10 hover:bg-yellow-50/40 transition-colors duration-200">
-                                            <td className="p-3 md:p-10 align-top relative">
-                                                <div className="column-a-container">
-                                                    <span className="column-a-text text-pink-600 text-lg md:text-5xl font-black block tracking-tighter wrap-text uppercase" title={row[3]}>{row[0]||'---'}</span>
-                                                    <span className="text-[10px] md:text-xl text-yellow-600 font-bold mt-1 md:mt-4 block opacity-80 group-hover:opacity-100 transition-opacity leading-tight wrap-text">🌸 Barcode/SKU: {row[1]||'-'} | 📝 CF: {row[2]||'-'}</span>
+                                            <td className="p-2 md:p-8 align-top relative">
+                                                <div className="column-a-container overflow-hidden">
+                                                    <span className="column-a-text text-pink-600 text-base md:text-4xl font-black block tracking-tighter wrap-text uppercase" title={row[3]}>{row[0]||'---'}</span>
+                                                    <span className="text-[6px] md:text-[10px] text-yellow-600 font-bold mt-0.5 md:mt-1 block truncate opacity-70 group-hover:opacity-100 transition-opacity" title={row[1]}>{row[1]||'-'}</span>
                                                 </div>
-                                                {/* Action Buttons */}
-                                                <div className="absolute top-2 right-2 flex gap-1">
+                                            </td>
+                                            <td className="p-1.5 md:p-8 text-center align-middle"><span className="inline-block px-1.5 py-1 md:px-5 md:py-3 bg-yellow-100 text-yellow-700 rounded-[0.4rem] md:rounded-[1.5rem] text-[9px] md:text-lg font-black w-full shadow-sm wrap-text leading-tight uppercase">📍 {row[7]}</span></td>
+                                            <td className="p-1.5 md:p-8 text-center align-middle"><span className="inline-block px-1.5 py-1 md:px-5 md:py-3 bg-pink-100 text-pink-700 rounded-[0.4rem] md:rounded-[1.5rem] text-[9px] md:text-lg font-black w-full shadow-sm wrap-text leading-tight uppercase">🎨 {row[8]}</span></td>
+                                            <td className="p-1.5 md:p-8 text-center align-middle relative pb-8 md:pb-12">
+                                                <span className="inline-block px-1.5 py-1 md:px-5 md:py-3 bg-white border border-pink-100 md:border-2 text-pink-400 rounded-[0.4rem] md:rounded-[1.5rem] text-[9px] md:text-lg font-bold w-full shadow-sm italic wrap-text leading-tight uppercase">📏 {row[9]}</span>
+                                                {/* Action Buttons (ย้ายมาไว้ขวาล่างของช่องขนาด) */}
+                                                <div className="absolute bottom-1 right-1 md:bottom-2 md:right-2 flex flex-row gap-1">
                                                     {/* Out-of-stock notice button */}
                                                     <button
                                                         onClick={() => setNoticeRow(row)}
-                                                        className="p-1.5 md:p-2 bg-red-50 text-red-400 rounded-full hover:bg-red-400 hover:text-white transition-all shadow-sm active:scale-90"
-                                                        title="พิมพ์ใบแจ้งสินค้าหมด A6">
-                                                        <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                                        className="p-1 md:p-2 bg-red-50 text-red-400 rounded-full hover:bg-red-400 hover:text-white transition-all shadow-sm active:scale-90"
+                                                        title="สร้างใบแจ้งสินค้าหมด">
+                                                        <svg className="w-3 h-3 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                                     </button>
-                                                    {/* Sticker print button */}
+                                                    {/* Sticker preview button */}
                                                     <button
-                                                        onClick={() => handlePrintSticker(row)}
-                                                        className="p-1.5 md:p-2 bg-pink-50 text-pink-400 rounded-full hover:bg-pink-400 hover:text-white transition-all shadow-sm active:scale-90"
-                                                        title="พิมพ์สติกเกอร์บาร์โค้ด">
-                                                        <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                                                        onClick={() => setStickerPreview(row)}
+                                                        className="p-1 md:p-2 bg-pink-50 text-pink-400 rounded-full hover:bg-pink-400 hover:text-white transition-all shadow-sm active:scale-90"
+                                                        title="พรีวิวสติกเกอร์บาร์โค้ด">
+                                                        <svg className="w-3 h-3 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
                                                     </button>
                                                 </div>
                                             </td>
-                                            <td className="p-2 md:p-8 text-center align-middle"><span className="inline-block px-2 py-1 md:px-5 md:py-3 bg-yellow-100 text-yellow-700 rounded-[0.5rem] md:rounded-[1.5rem] text-[9px] md:text-lg font-black w-full shadow-sm wrap-text leading-tight uppercase">📍 {row[7]}</span></td>
-                                            <td className="p-2 md:p-8 text-center align-middle"><span className="inline-block px-2 py-1 md:px-5 md:py-3 bg-pink-100 text-pink-700 rounded-[0.5rem] md:rounded-[1.5rem] text-[9px] md:text-lg font-black w-full shadow-sm wrap-text leading-tight uppercase">🎨 {row[8]}</span></td>
-                                            <td className="p-2 md:p-8 text-center align-middle"><span className="inline-block px-2 py-1 md:px-5 md:py-3 bg-white border border-pink-100 md:border-2 text-pink-400 rounded-[0.5rem] md:rounded-[1.5rem] text-[9px] md:text-lg font-bold w-full shadow-sm italic wrap-text leading-tight uppercase">📏 {row[9]}</span></td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -562,8 +692,8 @@
                         </div>
                     </div>
 
-                    <footer className="mt-6 md:mt-10 p-4 md:p-6 text-center text-[8px] md:text-[10px] font-black text-yellow-600 uppercase tracking-[0.2em] w-full no-print">
-                        🍬 Happy Search • Direct WiFi Print Support • Out-of-Stock Notice A6 🍬
+                    <footer className="mt-6 md:mt-10 p-4 md:p-6 text-center text-[8px] md:text-[10px] font-black text-yellow-600 uppercase tracking-[0.2em] w-full">
+                        🍬 Happy Search • Direct WiFi Print Support • Out-of-Stock Label A6 🍬
                     </footer>
                 </div>
             );
@@ -572,22 +702,5 @@
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
-
-    <!-- Sticker print CSS -->
-    <style>
-        @media print {
-            .sticker-unit {
-                width: 32mm; height: 23mm; margin-bottom: 2mm; padding: 1mm;
-                box-sizing: border-box; display: flex; flex-direction: column;
-                justify-content: space-between; align-items: center; text-align: center;
-                page-break-after: always; overflow: hidden; color: black; background: white;
-            }
-            .sticker-unit:last-child { page-break-after: auto; margin-bottom: 0; }
-            .sticker-title { font-size:8pt; font-weight:700; width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.2; border-bottom:0.1mm solid black; padding-bottom:0.5mm; }
-            .qr-wrapper { width:13mm; height:13mm; display:flex; justify-content:center; align-items:center; margin:0 auto; }
-            .qr-image { width:100%; height:100%; image-rendering:pixelated; }
-            .sticker-footer { font-size:6pt; font-weight:600; width:100%; display:flex; justify-content:space-between; border-top:0.1mm solid black; padding-top:0.5mm; line-height:1; }
-        }
-    </style>
 </body>
 </html>
