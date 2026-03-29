@@ -506,14 +506,14 @@
         const App = () => {
             const [rawData, setRawData] = useState([]);
             const [headers, setHeaders] = useState([]);
-            const [loading, setLoading] = useState(true);
+            const [loading, setLoading] = useState(false);
             const [error, setError] = useState(null);
             
-            const [stickerPromptRow, setStickerPromptRow] = useState(null); // 1. หน้าจอคำนวณสติกเกอร์
-            const [stickerPreview, setStickerPreview] = useState(null);     // 2. พรีวิวสติกเกอร์ 100x25mm {row, copies}
+            const [stickerPromptRow, setStickerPromptRow] = useState(null);
+            const [stickerPreview, setStickerPreview] = useState(null);
             
-            const [noticeRow, setNoticeRow] = useState(null);               // Row สำหรับเปิด Modal กรอกราคา
-            const [labelPreview, setLabelPreview] = useState(null);         // Data สำหรับหน้า Preview ใบแปะหน้า A6
+            const [noticeRow, setNoticeRow] = useState(null);
+            const [labelPreview, setLabelPreview] = useState(null);
 
             const [printerIP, setPrinterIP] = useState('');
             const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -522,13 +522,15 @@
             const [filterI, setFilterI] = useState('');
             const [filterJ, setFilterJ] = useState('');
 
-            // 🔥 Firebase Config
-            const FIREBASE_URL = "https://lamsang-barcode-default-rtdb.asia-southeast1.firebasedatabase.app";
+            // 🔥 Proxy Config (Apps Script)
+            const PROXY_URL = "https://script.google.com/macros/s/AKfycbySdchoxKfxsJ3KtNHJgNxD0weptxTlq0-ZpYzrUACa2FoYsqagtKnsEEe_lHDBWOVR/exec";
+
+            useEffect(() => { fetchData(); }, []);
 
             const fetchData = async () => {
                 setLoading(true); setError(null);
                 try {
-                    const res = await fetch(`${FIREBASE_URL}/inventory.json?t=${new Date().getTime()}`);
+                    const res = await fetch(`${PROXY_URL}?path=inventory&t=${new Date().getTime()}`);
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     const json = await res.json();
 
@@ -575,7 +577,7 @@
                 }
             };
 
-            useEffect(() => { fetchData(); }, []);
+
 
             const dropdownOptions = useMemo(() => {
                 const h=new Set(), i=new Set(), j=new Set();
@@ -669,7 +671,7 @@
                         <div className="text-5xl mb-4">🚧</div>
                         <h2 className="text-red-500 font-black text-2xl mb-2">พบปัญหาการดึงข้อมูล</h2>
                         <p className="text-slate-600 text-sm mb-6 max-w-md">{error}</p>
-                        <button onClick={fetchData} className="px-8 py-3 bg-pink-500 text-white rounded-2xl font-bold shadow-lg hover:bg-pink-600 active:scale-95 transition-all">ลองโหลดใหม่จ้า</button>
+                        <button onClick={() => fetchData()} className="px-8 py-3 bg-pink-500 text-white rounded-2xl font-bold shadow-lg hover:bg-pink-600 active:scale-95 transition-all">ลองโหลดใหม่จ้า</button>
                     </div>
                 </div>
             );
@@ -766,7 +768,7 @@
                                     <button onClick={()=>setIsSettingsOpen(true)} className="p-2 md:p-6 bg-white border-2 border-pink-100 rounded-[0.8rem] md:rounded-[2rem] text-pink-400 shadow-md active:scale-90 transition-all">
                                         <svg className="w-5 h-5 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                                     </button>
-                                    <button onClick={fetchData} className="p-2 md:p-6 bg-white border-2 border-pink-100 rounded-[0.8rem] md:rounded-[2rem] text-pink-400 shadow-md active:scale-90 transition-all">
+                                    <button onClick={() => fetchData()} className="p-2 md:p-6 bg-white border-2 border-pink-100 rounded-[0.8rem] md:rounded-[2rem] text-pink-400 shadow-md active:scale-90 transition-all" title="รีโหลดข้อมูล">
                                         <svg className="w-5 h-5 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                                     </button>
                                 </div>
