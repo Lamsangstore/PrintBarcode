@@ -724,7 +724,7 @@
             const generateZPL = () => {
                 const p = productName.substring(0,25);
                 const v = variantName.substring(0,25);
-                return `^XA^CI28^PW1181^LL295^MD20\n^FO4,24^A0N,33,33^FB386,1,0,C^FD${p}^FS\n^FO100,65^BQN,2,7^FDQA,${sku}^FS\n^FO4,236^A0N,30,30^FB386,1,0,C^FD${v}^FS\n^FO398,24^A0N,33,33^FB386,1,0,C^FD${p}^FS\n^FO494,65^BQN,2,7^FDQA,${sku}^FS\n^FO398,236^A0N,30,30^FB386,1,0,C^FD${v}^FS\n^FO792,24^A0N,33,33^FB386,1,0,C^FD${p}^FS\n^FO888,65^BQN,2,7^FDQA,${sku}^FS\n^FO792,236^A0N,30,30^FB386,1,0,C^FD${v}^FS\n^PQ${copies}^XZ`;
+                return `^XA^CI28^PW1181^LL295^MD20\n^FO4,4^A0N,28,28^FB386,1,0,C^FD${p}^FS\n^FO90,40^BQN,2,8^FDQA,${sku}^FS\n^FO4,262^A0N,26,26^FB386,1,0,C^FD${v}^FS\n^FO398,4^A0N,28,28^FB386,1,0,C^FD${p}^FS\n^FO484,40^BQN,2,8^FDQA,${sku}^FS\n^FO398,262^A0N,26,26^FB386,1,0,C^FD${v}^FS\n^FO792,4^A0N,28,28^FB386,1,0,C^FD${p}^FS\n^FO878,40^BQN,2,8^FDQA,${sku}^FS\n^FO792,262^A0N,26,26^FB386,1,0,C^FD${v}^FS\n^PQ${copies}^XZ`;
             };
 
             const addRipple = (e) => {
@@ -793,10 +793,87 @@
                     } catch(e) { console.warn('WiFi:', e.message); }
                 }
 
+                // Fallback: เปิด popup window พร้อม label แล้วสั่งพิมพ์อัตโนมัติ
+                openPrintPopup();
                 setStatus('fallback');
-                setStatusMsg(`แก้ Copies เป็น ${copies} แล้วกดพิมพ์`);
-                window.print();
+                setStatusMsg(`เปิดหน้าต่างพิมพ์แล้ว — แก้ Copies เป็น ${copies}`);
                 setTimeout(() => { setStatus('idle'); setStatusMsg(''); }, 6000);
+            };
+
+            const openPrintPopup = () => {
+                const qrUrl = encodeURIComponent(sku);
+                const pName = productName.substring(0, 28);
+                const vName = variantName.substring(0, 28);
+                const imgSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + qrUrl;
+
+                const makeCell = (border) =>
+                    '<div style="flex:1;display:flex;flex-direction:column;align-items:center;' +
+                    'justify-content:space-between;padding:0.8mm;overflow:hidden;box-sizing:border-box;' +
+                    (border ? 'border-right:0.5px dashed #aaa;' : '') + '">' +
+                    '<div style="font-size:6.5pt;font-weight:900;width:100%;text-align:center;' +
+                    'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1;color:#000;">' + pName + '</div>' +
+                    '<img src="' + imgSrc + '" style="width:17mm;height:17mm;image-rendering:pixelated;display:block;"/>' +
+                    '<div style="font-size:5.5pt;font-weight:700;width:100%;text-align:center;' +
+                    'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1;color:#000;">' + vName + '</div>' +
+                    '</div>';
+
+                // ลบ iframe เก่า
+                var old = document.getElementById('zpl-print-frame');
+                if (old) old.parentNode.removeChild(old);
+
+                var iframe = document.createElement('iframe');
+                iframe.id = 'zpl-print-frame';
+                iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:100mm;height:25mm;border:none;';
+                document.body.appendChild(iframe);
+
+                var doc = iframe.contentDocument || iframe.contentWindow.document;
+                doc.open();
+                doc.write(
+                    '<!DOCTYPE html><html><head><meta charset="UTF-8">' +
+                    '<style>' +
+                    '@page{size:100mm 25mm;margin:0;}' +
+                    'html,body{width:100mm;height:25mm;margin:0;padding:0;overflow:hidden;background:white;}' +
+                    'body{display:flex;flex-direction:row;font-family:Arial,Helvetica,sans-serif;' +
+                    '-webkit-print-color-adjust:exact;print-color-adjust:exact;}' +
+                    '*{box-sizing:border-box;}' +
+                    '</style></head><body>' +
+                    makeCell(true) + makeCell(true) + makeCell(false) +
+                    '</body></html>'
+                );
+                doc.close();
+
+                var imgs = doc.querySelectorAll('img');
+                var loaded = 0;
+                var total = imgs.length;
+
+                var doPrint = function() {
+                    iframe.contentWindow.focus();
+                    // ใช้ keyboard shortcut ⌥⌘P เพื่อเปิด macOS native dialog
+                    // แต่ต้องเรียกผ่าน execCommand ก่อน
+                    try {
+                        // วิธีที่ 1: เรียก print ปกติ (Chrome dialog)
+                        iframe.contentWindow.print();
+                    } catch(e) {
+                        window.print();
+                    }
+                    setTimeout(function() {
+                        var f = document.getElementById('zpl-print-frame');
+                        if (f) f.parentNode.removeChild(f);
+                    }, 5000);
+                };
+
+                if (total === 0) {
+                    setTimeout(doPrint, 500);
+                } else {
+                    imgs.forEach(function(img) {
+                        var onDone = function() {
+                            loaded++;
+                            if (loaded >= total) setTimeout(doPrint, 500);
+                        };
+                        if (img.complete && img.naturalWidth > 0) onDone();
+                        else { img.onload = onDone; img.onerror = onDone; }
+                    });
+                }
             };
 
             const zplText = generateZPL();
@@ -865,7 +942,7 @@
                                             <div key={n} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'space-between',padding:'3px 2px',borderRight:n<3?'1px dashed #ddd':'none',overflow:'hidden'}}>
                                                 <div style={{fontSize:'5.5pt',fontWeight:900,width:'100%',textAlign:'center',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:'black'}}>{productName}</div>
                                                 <div className="qr-wrapper">
-                                                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(sku)}`} alt="QR" style={{width:'40px',height:'40px',imageRendering:'pixelated'}}/>
+                                                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(sku)}`} alt="QR" style={{width:'48px',height:'48px',imageRendering:'pixelated'}}/>
                                                     <div className="scan-line"/>
                                                 </div>
                                                 <div style={{fontSize:'4.5pt',fontWeight:700,width:'100%',textAlign:'center',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:'black'}}>{variantName}</div>
@@ -996,36 +1073,7 @@
                         )}
                     </div>
 
-                    {/* Label สำหรับ browser print — hidden ปกติ แสดงเฉพาะตอน print */}
-                    <div style={{
-                        display:'none',
-                        width:'100mm', height:'25mm',
-                        overflow:'hidden', boxSizing:'border-box',
-                        fontFamily:"'Noto Sans Thai',sans-serif",
-                        background:'white', color:'black',
-                        pageBreakBefore:'always'
-                    }} className="print-label-root">
-                        {[1,2,3].map(n => (
-                            <div key={n} style={{
-                                flex:1, display:'flex', flexDirection:'column',
-                                alignItems:'center', justifyContent:'space-between',
-                                padding:'1mm', boxSizing:'border-box', overflow:'hidden',
-                                borderRight: n < 3 ? '1px dashed #ccc' : 'none',
-                                height:'100%'
-                            }}>
-                                <div style={{fontSize:'7.5pt',fontWeight:900,width:'100%',textAlign:'center',
-                                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
-                                    lineHeight:1,paddingTop:'1mm',color:'black'}}>{productName}</div>
-                                <div style={{flexGrow:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(sku)}`}
-                                        alt="QR" style={{width:'15mm',height:'15mm',imageRendering:'pixelated'}}/>
-                                </div>
-                                <div style={{fontSize:'6pt',fontWeight:700,width:'100%',textAlign:'center',
-                                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
-                                    lineHeight:1,paddingBottom:'1mm',color:'black'}}>{variantName}</div>
-                            </div>
-                        ))}
-                    </div>
+                    {/* browser print ใช้ openPrintPopup() popup window แทน */}
                 </div>
             );
         };
