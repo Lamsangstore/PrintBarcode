@@ -590,7 +590,7 @@
             const generateZPL = () => {
                 const p = productName.substring(0, 25);
                 const v = variantName.substring(0, 25);
-                return `^XA^CI28^PW800^LL200^MD20\n^FO10,15^A0N,22,22^FB246,1,0,C^FD${p}^FS\n^FO68,38^BQN,2,5^FDQA,${sku}^FS\n^FO10,165^A0N,20,20^FB246,1,0,C^FD${v}^FS\n^FO276,15^A0N,22,22^FB246,1,0,C^FD${p}^FS\n^FO335,38^BQN,2,5^FDQA,${sku}^FS\n^FO276,165^A0N,20,20^FB246,1,0,C^FD${v}^FS\n^FO542,15^A0N,22,22^FB246,1,0,C^FD${p}^FS\n^FO601,38^BQN,2,5^FDQA,${sku}^FS\n^FO542,165^A0N,20,20^FB246,1,0,C^FD${v}^FS\n^PQ${copies}^XZ`;
+                return `^XA^CI28^PW1181^LL295^MD20\n^FO4,24^A0N,33,33^FB386,1,0,C^FD${p}^FS\n^FO100,65^BQN,2,7^FDQA,${sku}^FS\n^FO4,236^A0N,30,30^FB386,1,0,C^FD${v}^FS\n^FO398,24^A0N,33,33^FB386,1,0,C^FD${p}^FS\n^FO494,65^BQN,2,7^FDQA,${sku}^FS\n^FO398,236^A0N,30,30^FB386,1,0,C^FD${v}^FS\n^FO792,24^A0N,33,33^FB386,1,0,C^FD${p}^FS\n^FO888,65^BQN,2,7^FDQA,${sku}^FS\n^FO792,236^A0N,30,30^FB386,1,0,C^FD${v}^FS\n^PQ${copies}^XZ`;
             };
 
             // ── ลอง WebSocket Bridge ──
