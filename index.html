@@ -43,27 +43,139 @@
 
     /* ===== ANIMATIONS ===== */
     @keyframes fadeSlideUp { from { opacity:0; transform:translateY(30px) scale(.96); } to { opacity:1; transform:none; } }
+    @keyframes fadeSlideDown { from { opacity:0; transform:translateY(-20px); } to { opacity:1; transform:none; } }
     @keyframes slideDown { from { transform:translateY(-100%); opacity:0; } to { transform:none; opacity:1; } }
     @keyframes spin { to { transform:rotate(360deg); } }
-    @keyframes scalePop { 0%{opacity:0;transform:scale(.5)} 60%{transform:scale(1.06)} 100%{opacity:1;transform:scale(1)} }
+    @keyframes spinSlow { to { transform:rotate(360deg); } }
+    @keyframes scalePop { 0%{opacity:0;transform:scale(.5)} 60%{transform:scale(1.1)} 100%{opacity:1;transform:scale(1)} }
+    @keyframes scalePopBig { 0%{opacity:0;transform:scale(.3) rotate(-10deg)} 60%{transform:scale(1.12) rotate(2deg)} 100%{opacity:1;transform:scale(1) rotate(0)} }
     @keyframes pulseGlow { 0%,100%{box-shadow:0 0 0 0 rgba(0,113,227,.25)} 50%{box-shadow:0 0 20px 6px rgba(0,113,227,.1)} }
+    @keyframes pulseGlowPink { 0%,100%{box-shadow:0 0 0 0 rgba(255,55,95,.3)} 50%{box-shadow:0 0 30px 10px rgba(255,55,95,.15)} }
+    @keyframes pulseGlowGreen { 0%,100%{box-shadow:0 0 0 0 rgba(48,209,88,.3)} 50%{box-shadow:0 0 30px 10px rgba(48,209,88,.2)} }
     @keyframes floatOrb1 { 0%,100%{transform:translate(0,0)} 33%{transform:translate(60px,-80px)} 66%{transform:translate(-40px,-40px)} }
     @keyframes floatOrb2 { 0%,100%{transform:translate(0,0)} 33%{transform:translate(-80px,50px)} 66%{transform:translate(40px,80px)} }
+    @keyframes floatOrb3 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(30px,-50px) scale(1.1)} }
     @keyframes wiggle { 0%,100%{transform:rotate(0)} 25%{transform:rotate(-4deg)} 75%{transform:rotate(4deg)} }
+    @keyframes wigglePrint { 0%,100%{transform:rotate(0) scale(1)} 20%{transform:rotate(-6deg) scale(1.1)} 40%{transform:rotate(6deg) scale(1.1)} 60%{transform:rotate(-3deg)} 80%{transform:rotate(3deg)} }
     @keyframes slideIn { from{opacity:0;transform:scale(.97) translateY(12px)} to{opacity:1;transform:none} }
-    @keyframes shimmerText {
-        0%{background-position:-200% center}
-        100%{background-position:200% center}
-    }
+    @keyframes slideInLeft { from{opacity:0;transform:translateX(-24px)} to{opacity:1;transform:none} }
+    @keyframes slideInRight { from{opacity:0;transform:translateX(24px)} to{opacity:1;transform:none} }
+    @keyframes shimmerText { 0%{background-position:-200% center} 100%{background-position:200% center} }
+    @keyframes shimmerBg { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+    @keyframes ripple { 0%{transform:scale(0);opacity:.6} 100%{transform:scale(3);opacity:0} }
+    @keyframes successBounce { 0%{transform:scale(0) rotate(-15deg)} 50%{transform:scale(1.2) rotate(5deg)} 70%{transform:scale(.9) rotate(-3deg)} 100%{transform:scale(1) rotate(0)} }
+    @keyframes confetti { 0%{transform:translateY(0) rotate(0);opacity:1} 100%{transform:translateY(80px) rotate(720deg);opacity:0} }
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+    @keyframes scanLine { 0%{transform:translateY(0)} 50%{transform:translateY(60px)} 100%{transform:translateY(0)} }
+    @keyframes borderDance { 0%,100%{border-color:var(--accent)} 33%{border-color:var(--pink)} 66%{border-color:var(--purple)} }
+    @keyframes gradientShift { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+    @keyframes countUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+    @keyframes heartbeat { 0%,100%{transform:scale(1)} 15%{transform:scale(1.18)} 30%{transform:scale(1)} 45%{transform:scale(1.12)} 60%{transform:scale(1)} }
+    @keyframes staggerIn { from{opacity:0;transform:translateY(16px) scale(.95)} to{opacity:1;transform:none} }
+    @keyframes inkDrop { 0%{transform:scale(0);opacity:.8;border-radius:50%} 100%{transform:scale(4);opacity:0;border-radius:50%} }
+    @keyframes labelSlide { 0%{opacity:0;transform:translateX(-100%)} 60%{transform:translateX(4%)} 100%{opacity:1;transform:none} }
+    @keyframes printProgress { from{width:0} to{width:100%} }
+    @keyframes dotBounce { 0%,80%,100%{transform:scale(0)} 40%{transform:scale(1)} }
+    @keyframes rowHover { from{background:transparent} to{background:rgba(0,113,227,.04)} }
+    @keyframes badgePop { 0%{transform:scale(0)} 70%{transform:scale(1.15)} 100%{transform:scale(1)} }
 
     .anim-up { opacity:0; animation:fadeSlideUp .6s cubic-bezier(.22,1,.36,1) forwards; }
+    .anim-up-1 { opacity:0; animation:fadeSlideUp .6s .08s cubic-bezier(.22,1,.36,1) forwards; }
+    .anim-up-2 { opacity:0; animation:fadeSlideUp .6s .16s cubic-bezier(.22,1,.36,1) forwards; }
+    .anim-up-3 { opacity:0; animation:fadeSlideUp .6s .24s cubic-bezier(.22,1,.36,1) forwards; }
     .anim-pop { opacity:0; animation:scalePop .5s cubic-bezier(.34,1.56,.64,1) forwards; }
+    .anim-pop-big { opacity:0; animation:scalePopBig .6s cubic-bezier(.34,1.56,.64,1) forwards; }
+    .anim-left { opacity:0; animation:slideInLeft .5s cubic-bezier(.22,1,.36,1) forwards; }
+    .anim-right { opacity:0; animation:slideInRight .5s cubic-bezier(.22,1,.36,1) forwards; }
+    .anim-float { animation:float 3s ease-in-out infinite; }
     .animate-item { animation:slideIn .4s cubic-bezier(.22,1,.36,1) forwards; }
+    .animate-heartbeat { animation:heartbeat 1.4s ease-in-out infinite; }
+    .animate-wiggle-print { animation:wigglePrint .6s ease-in-out; }
+
+    /* shimmer loading skeleton */
+    .shimmer {
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: shimmerBg 1.4s infinite;
+        border-radius: 8px;
+    }
+
+    /* gradient animated button */
+    .btn-gradient {
+        background: linear-gradient(135deg, var(--pink), var(--purple), var(--accent));
+        background-size: 200% 200%;
+        animation: gradientShift 3s ease infinite;
+        color: #fff; border: none; border-radius: 16px;
+        font-family: inherit; font-weight: 900; font-size: 18px;
+        padding: 18px 24px; cursor: pointer;
+        transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s;
+        display: flex; align-items: center; justify-content: center; gap: 10px;
+        width: 100%; position: relative; overflow: hidden;
+    }
+    .btn-gradient:active { transform: scale(.95); }
+    .btn-gradient:hover { box-shadow: 0 8px 30px rgba(255,55,95,.4); transform: scale(1.02); }
+    .btn-gradient:disabled { animation: none; background: #555; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    /* ripple effect */
+    .ripple-container { position: relative; overflow: hidden; }
+    .ripple-effect {
+        position: absolute; border-radius: 50%;
+        background: rgba(255,255,255,.4);
+        animation: ripple .6s ease-out forwards;
+        pointer-events: none;
+        transform-origin: center;
+    }
+
+    /* success checkmark */
+    .success-icon { animation: successBounce .5s cubic-bezier(.34,1.56,.64,1) forwards; }
+
+    /* print progress bar */
+    .print-progress-bar {
+        height: 3px; border-radius: 99px;
+        background: linear-gradient(90deg, var(--pink), var(--purple), var(--accent));
+        background-size: 200% 100%;
+        animation: printProgress 2s ease-in-out forwards, shimmerBg 1s infinite;
+    }
+
+    /* loading dots */
+    .dot-bounce { display: inline-flex; gap: 4px; }
+    .dot-bounce span {
+        width: 6px; height: 6px; background: currentColor;
+        border-radius: 50%; display: inline-block;
+        animation: dotBounce 1.2s ease-in-out infinite;
+    }
+    .dot-bounce span:nth-child(2) { animation-delay: .2s; }
+    .dot-bounce span:nth-child(3) { animation-delay: .4s; }
+
+    /* scan line on QR preview */
+    .qr-wrapper { position: relative; overflow: hidden; border-radius: 8px; }
+    .scan-line {
+        position: absolute; left: 0; right: 0; height: 2px;
+        background: linear-gradient(90deg, transparent, var(--accent), transparent);
+        animation: scanLine 2s ease-in-out infinite;
+        pointer-events: none;
+    }
+
+    /* table row entrance */
+    .tr-stagger { opacity: 0; animation: staggerIn .4s cubic-bezier(.22,1,.36,1) forwards; }
+
+    /* badge animated */
+    .badge-anim { animation: badgePop .4s cubic-bezier(.34,1.56,.64,1) forwards; }
+
+    /* card hover lift */
+    .card-hover {
+        transition: transform .3s cubic-bezier(.22,1,.36,1), box-shadow .3s;
+    }
+    .card-hover:hover {
+        transform: translateY(-3px) scale(1.01);
+        box-shadow: 0 12px 40px rgba(0,0,0,.1);
+    }
 
     /* Floating orbs background */
     .orb { position:fixed; border-radius:50%; filter:blur(80px); opacity:.15; pointer-events:none; z-index:0; will-change:transform; }
     .orb-1 { width:380px; height:380px; background:var(--accent); top:-80px; right:-80px; animation:floatOrb1 22s ease-in-out infinite; }
     .orb-2 { width:320px; height:320px; background:var(--purple); bottom:-60px; left:-60px; animation:floatOrb2 28s ease-in-out infinite; }
+    .orb-3 { width:200px; height:200px; background:var(--pink); top:40%; right:20%; animation:floatOrb3 18s ease-in-out infinite; opacity:.08; }
 
     /* ===== NAV ===== */
     .store-nav {
@@ -193,8 +305,8 @@
         cursor: pointer; transition: all .25s;
         display: inline-flex; align-items: center;
     }
-    .btn-print:hover { background: var(--accent); color: #fff; transform: scale(1.08); }
-    .btn-print:active { transform: scale(.92); }
+    .btn-print:hover { background: var(--accent); color: #fff; transform: scale(1.12) rotate(-3deg); box-shadow: 0 4px 12px rgba(0,113,227,.3); }
+    .btn-print:active { transform: scale(.88); }
 
     /* ===== BADGE ===== */
     .badge {
@@ -573,37 +685,67 @@
             );
         };
 
-        /* =================== Sticker Preview Modal — Smart Auto Print =================== */
+        /* =================== Sticker Preview Modal — Smart Auto Print + Full Animation =================== */
+        const Confetti = () => {
+            const colors = ['#ff375f','#bf5af2','#0a84ff','#30d158','#ffd60a','#ff9f0a'];
+            return (
+                <div style={{position:'absolute',inset:0,pointerEvents:'none',overflow:'hidden',borderRadius:'inherit'}}>
+                    {Array.from({length:18}).map((_,i) => (
+                        <div key={i} style={{
+                            position:'absolute',
+                            left: `${Math.random()*100}%`,
+                            top: `${Math.random()*40}%`,
+                            width: `${6+Math.random()*6}px`,
+                            height: `${6+Math.random()*6}px`,
+                            background: colors[Math.floor(Math.random()*colors.length)],
+                            borderRadius: Math.random()>.5 ? '50%' : '2px',
+                            animation: `confetti ${.6+Math.random()*.8}s ${Math.random()*.4}s ease-out forwards`,
+                            transform: `rotate(${Math.random()*360}deg)`
+                        }}/>
+                    ))}
+                </div>
+            );
+        };
+
         const StickerPreviewModal = ({ data, onClose, printerConfig }) => {
             const { row, copies } = data;
             const productName = String(row[3] || '');
             const sku         = String(row[1] || '');
             const variantName = String(row[4] || '');
 
-            // status: idle | trying_ws | trying_wifi | printing | success | fallback | error
-            const [status, setStatus]   = useState('idle');
+            const [status, setStatus]     = useState('idle'); // idle|printing|success|fallback|error
             const [statusMsg, setStatusMsg] = useState('');
-            const [showZpl, setShowZpl] = useState(false);
+            const [showZpl, setShowZpl]   = useState(false);
+            const [showConfetti, setShowConfetti] = useState(false);
+            const [ripples, setRipples]   = useState([]);
 
             const { printerIP, bridgeUrl } = printerConfig;
 
             const generateZPL = () => {
-                const p = productName.substring(0, 25);
-                const v = variantName.substring(0, 25);
+                const p = productName.substring(0,25);
+                const v = variantName.substring(0,25);
                 return `^XA^CI28^PW1181^LL295^MD20\n^FO4,24^A0N,33,33^FB386,1,0,C^FD${p}^FS\n^FO100,65^BQN,2,7^FDQA,${sku}^FS\n^FO4,236^A0N,30,30^FB386,1,0,C^FD${v}^FS\n^FO398,24^A0N,33,33^FB386,1,0,C^FD${p}^FS\n^FO494,65^BQN,2,7^FDQA,${sku}^FS\n^FO398,236^A0N,30,30^FB386,1,0,C^FD${v}^FS\n^FO792,24^A0N,33,33^FB386,1,0,C^FD${p}^FS\n^FO888,65^BQN,2,7^FDQA,${sku}^FS\n^FO792,236^A0N,30,30^FB386,1,0,C^FD${v}^FS\n^PQ${copies}^XZ`;
             };
 
-            // ── ลอง WebSocket Bridge ──
+            const addRipple = (e) => {
+                const btn = e.currentTarget.getBoundingClientRect();
+                const x = e.clientX - btn.left;
+                const y = e.clientY - btn.top;
+                const id = Date.now();
+                setRipples(r => [...r, {id,x,y}]);
+                setTimeout(() => setRipples(r => r.filter(rp => rp.id !== id)), 700);
+            };
+
             const tryWsBridge = () => new Promise((resolve, reject) => {
                 if (!bridgeUrl) { reject(new Error('no_bridge')); return; }
                 const url = bridgeUrl.startsWith('ws') ? bridgeUrl : `ws://${bridgeUrl}`;
                 let ws, done = false;
                 try { ws = new WebSocket(url); } catch(e) { reject(e); return; }
-                const t = setTimeout(() => { done=true; try{ws.close()}catch{}; reject(new Error('timeout')); }, 4000);
+                const t = setTimeout(() => { done=true; try{ws.close()}catch{}; reject(new Error('timeout')); }, 5000);
                 ws.onopen  = () => ws.send(JSON.stringify({ action:'print', productName, variantName, sku, copies }));
                 ws.onmessage = e => {
-                    if (done) return; done=true; clearTimeout(t);
-                    let r; try { r=JSON.parse(e.data); } catch { r={}; }
+                    if(done) return; done=true; clearTimeout(t);
+                    let r; try{r=JSON.parse(e.data);}catch{r={};}
                     ws.close();
                     r.ok ? resolve(r) : reject(new Error(r.error||'bridge_error'));
                 };
@@ -611,129 +753,243 @@
                 ws.onclose  = () => { if(!done){done=true;clearTimeout(t);reject(new Error('ws_closed'));} };
             });
 
-            // ── ลอง WiFi Direct HTTP POST ──
             const tryWifiDirect = () => new Promise(async (resolve, reject) => {
                 if (!printerIP) { reject(new Error('no_ip')); return; }
                 try {
                     const ctrl = new AbortController();
                     const t = setTimeout(() => ctrl.abort(), 4000);
-                    await fetch(`http://${printerIP}/pstprnt`, { method:'POST', mode:'no-cors', body:generateZPL(), signal:ctrl.signal });
+                    await fetch(`http://${printerIP}/pstprnt`, {method:'POST',mode:'no-cors',body:generateZPL(),signal:ctrl.signal});
                     clearTimeout(t);
-                    resolve({ printer: printerIP });
+                    resolve({printer: printerIP});
                 } catch(e) { reject(e); }
             });
 
-            // ── Smart Print: ลอง WS → WiFi → Browser ──
-            const handleSmartPrint = async () => {
-                setStatus('printing'); setStatusMsg('');
+            const handleSmartPrint = async (e) => {
+                addRipple(e);
+                if (status === 'printing') return;
+                setStatus('printing'); setStatusMsg(''); setShowConfetti(false);
 
-                // 1. ลอง WebSocket Bridge ก่อน
                 if (bridgeUrl) {
-                    setStatusMsg('🔌 กำลังเชื่อมต่อ Bridge...');
+                    setStatusMsg('กำลังเชื่อมต่อ Bridge...');
                     try {
-                        const r = await tryWsBridge();
+                        await tryWsBridge();
                         setStatus('success');
-                        setStatusMsg(`✅ พิมพ์ ${copies} แผ่น สำเร็จ!`);
-                        setTimeout(() => { setStatus('idle'); setStatusMsg(''); }, 4000);
+                        setStatusMsg(`พิมพ์ ${copies} แผ่น (${copies*3} ดวง) สำเร็จ!`);
+                        setShowConfetti(true);
+                        setTimeout(() => { setStatus('idle'); setStatusMsg(''); setShowConfetti(false); }, 5000);
                         return;
-                    } catch(e) {
-                        console.warn('WS failed:', e.message);
-                    }
+                    } catch(e) { console.warn('WS:', e.message); }
                 }
 
-                // 2. ลอง WiFi Direct
                 if (printerIP) {
-                    setStatusMsg('📡 กำลังส่งตรงไปเครื่องพิมพ์...');
+                    setStatusMsg('ส่งตรงไปเครื่องพิมพ์...');
                     try {
                         await tryWifiDirect();
                         setStatus('success');
-                        setStatusMsg(`✅ พิมพ์ ${copies} แผ่น สำเร็จ!`);
-                        setTimeout(() => { setStatus('idle'); setStatusMsg(''); }, 4000);
+                        setStatusMsg(`พิมพ์ ${copies} แผ่น สำเร็จ!`);
+                        setShowConfetti(true);
+                        setTimeout(() => { setStatus('idle'); setStatusMsg(''); setShowConfetti(false); }, 5000);
                         return;
-                    } catch(e) {
-                        console.warn('WiFi failed:', e.message);
-                    }
+                    } catch(e) { console.warn('WiFi:', e.message); }
                 }
 
-                // 3. Fallback → window.print()
                 setStatus('fallback');
-                setStatusMsg(`📌 แก้ Copies เป็น ${copies} แล้วกดพิมพ์`);
+                setStatusMsg(`แก้ Copies เป็น ${copies} แล้วกดพิมพ์`);
                 window.print();
-                setTimeout(() => { setStatus('idle'); setStatusMsg(''); }, 5000);
+                setTimeout(() => { setStatus('idle'); setStatusMsg(''); }, 6000);
             };
 
             const zplText = generateZPL();
             const isReady = !!(bridgeUrl || printerIP);
 
             return (
-                <div className="fixed inset-0 bg-slate-900/95 z-[400] flex flex-col items-center p-4 overflow-y-auto print:static print:bg-white print:p-0 print:block">
+                <div className="fixed inset-0 z-[400] flex flex-col items-center p-4 overflow-y-auto print:static print:bg-white print:p-0 print:block"
+                    style={{background:'linear-gradient(135deg,#0a0a1a 0%,#1a0a2e 50%,#0a1a2e 100%)'}}>
                     <style type="text/css">{`@media print { @page { size:100mm 25mm landscape; margin:0; } body { background:white!important; margin:0!important; padding:0!important; } .print-hide { display:none!important; } * { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; color-adjust:exact!important; } }`}</style>
 
-                    <div className="w-full max-w-sm print-hide mt-6">
+                    {/* animated bg particles */}
+                    <div className="print-hide" style={{position:'fixed',inset:0,pointerEvents:'none',overflow:'hidden'}}>
+                        {[...Array(6)].map((_,i) => (
+                            <div key={i} style={{
+                                position:'absolute',
+                                borderRadius:'50%',
+                                filter:'blur(60px)',
+                                opacity:.12,
+                                width:`${200+i*60}px`,height:`${200+i*60}px`,
+                                background:['#ff375f','#bf5af2','#0a84ff','#30d158','#ffd60a','#ff9f0a'][i],
+                                left:`${[10,60,80,5,40,70][i]}%`,
+                                top:`${[10,60,20,80,40,5][i]}%`,
+                                animation:`floatOrb${i%2+1} ${18+i*4}s ease-in-out infinite`,
+                                animationDelay:`${i*-3}s`
+                            }}/>
+                        ))}
+                    </div>
 
-                        {/* ── Top bar ── */}
-                        <div className="flex items-center gap-3 mb-5">
-                            <button onClick={onClose} className="w-10 h-10 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded-xl transition-colors flex-shrink-0">
+                    <div className="w-full max-w-sm print-hide mt-4" style={{position:'relative',zIndex:1}}>
+
+                        {/* Top bar */}
+                        <div className="flex items-center gap-3 mb-5 anim-up">
+                            <button onClick={onClose}
+                                className="w-10 h-10 flex items-center justify-center text-white rounded-xl transition-all hover:scale-110 active:scale-90"
+                                style={{background:'rgba(255,255,255,.12)',backdropFilter:'blur(12px)'}}>
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
                             </button>
                             <div className="flex-1 min-w-0">
-                                <p className="text-white font-black truncate">{productName}</p>
-                                <p className="text-slate-400 text-xs">{copies} แผ่น × 3 = {copies*3} ดวง</p>
+                                <p className="text-white font-black truncate text-lg" style={{textShadow:'0 2px 8px rgba(0,0,0,.5)'}}>{productName}</p>
+                                <p style={{color:'rgba(255,255,255,.5)',fontSize:'12px'}}>
+                                    <span style={{color:'#ff375f',fontWeight:700}}>{copies}</span> แผ่น ×3 = <span style={{color:'#30d158',fontWeight:700}}>{copies*3}</span> ดวง
+                                </p>
                             </div>
                         </div>
 
-                        {/* ── Label Preview ── */}
-                        <div className="flex justify-center mb-5">
-                            <div className="bg-white w-[300px] h-[75px] flex rounded-xl overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.5)]" style={{fontFamily:"'Noto Sans Thai',sans-serif"}}>
-                                {[1,2,3].map(n => (
-                                    <div key={n} className="flex-1 flex flex-col items-center justify-between py-1 px-0.5 border-r border-dashed border-gray-300 last:border-r-0 overflow-hidden">
-                                        <div className="text-[5.5pt] font-extrabold w-full text-center truncate text-black leading-none">{productName}</div>
-                                        <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(sku)}`} alt="QR" className="w-10 h-10" style={{imageRendering:'pixelated'}}/>
-                                        <div className="text-[4.5pt] font-bold w-full text-center truncate text-black leading-none">{variantName}</div>
+                        {/* Label Preview Card */}
+                        <div className="anim-up-1 mb-5">
+                            <div style={{
+                                background:'rgba(255,255,255,.08)',
+                                backdropFilter:'blur(20px)',
+                                borderRadius:'20px',
+                                padding:'16px',
+                                border:'1px solid rgba(255,255,255,.12)',
+                                boxShadow:'0 8px 32px rgba(0,0,0,.3)'
+                            }}>
+                                <p style={{color:'rgba(255,255,255,.4)',fontSize:'10px',fontWeight:700,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:'10px',textAlign:'center'}}>Preview</p>
+                                <div className="flex justify-center">
+                                    <div style={{
+                                        background:'white',width:'300px',height:'75px',
+                                        display:'flex',borderRadius:'10px',overflow:'hidden',
+                                        boxShadow:'0 4px 24px rgba(0,0,0,.4)',
+                                        fontFamily:"'Noto Sans Thai',sans-serif",
+                                        animation:'float 4s ease-in-out infinite'
+                                    }}>
+                                        {[1,2,3].map(n => (
+                                            <div key={n} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'space-between',padding:'3px 2px',borderRight:n<3?'1px dashed #ddd':'none',overflow:'hidden'}}>
+                                                <div style={{fontSize:'5.5pt',fontWeight:900,width:'100%',textAlign:'center',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:'black'}}>{productName}</div>
+                                                <div className="qr-wrapper">
+                                                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(sku)}`} alt="QR" style={{width:'40px',height:'40px',imageRendering:'pixelated'}}/>
+                                                    <div className="scan-line"/>
+                                                </div>
+                                                <div style={{fontSize:'4.5pt',fontWeight:700,width:'100%',textAlign:'center',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:'black'}}>{variantName}</div>
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
+                                </div>
+                                {/* SKU badge */}
+                                <div style={{textAlign:'center',marginTop:'10px'}}>
+                                    <span style={{
+                                        background:'rgba(0,113,227,.2)',color:'#60aaff',
+                                        padding:'3px 10px',borderRadius:'99px',fontSize:'11px',fontWeight:700,
+                                        border:'1px solid rgba(0,113,227,.3)',
+                                        animation:'badgePop .5s .3s cubic-bezier(.34,1.56,.64,1) both'
+                                    }}>SKU: {sku}</span>
+                                </div>
                             </div>
                         </div>
 
-                        {/* ── Print Button ── */}
-                        <button
-                            onClick={handleSmartPrint}
-                            disabled={status === 'printing'}
-                            className={`w-full py-5 rounded-2xl font-black text-xl flex items-center justify-center gap-3 transition-all shadow-lg mb-3 ${
-                                status === 'success'  ? 'bg-green-500 text-white' :
-                                status === 'printing' ? 'bg-slate-600 text-white cursor-not-allowed' :
-                                status === 'fallback' ? 'bg-orange-500 text-white' :
-                                'bg-pink-500 hover:bg-pink-400 active:scale-95 text-white'
-                            }`}
-                        >
-                            {status === 'printing' && <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"/>}
-                            {status === 'success'  ? '✅ พิมพ์สำเร็จ!' :
-                             status === 'printing' ? statusMsg || 'กำลังพิมพ์...' :
-                             status === 'fallback' ? '🖨️ เปิดหน้าต่างพิมพ์...' :
-                             `🖨️ พิมพ์ ${copies} แผ่น`}
-                        </button>
+                        {/* Print Button */}
+                        <div className="anim-up-2 mb-3" style={{position:'relative'}}>
+                            {showConfetti && <Confetti/>}
+                            <button
+                                onClick={handleSmartPrint}
+                                disabled={status === 'printing'}
+                                className="btn-gradient ripple-container"
+                                style={{
+                                    background: status === 'success'
+                                        ? 'linear-gradient(135deg,#1a8a3a,#30d158)'
+                                        : status === 'printing'
+                                        ? 'linear-gradient(135deg,#333,#555)'
+                                        : undefined,
+                                    animation: status === 'success' ? 'none' : status === 'printing' ? 'none' : undefined,
+                                    boxShadow: status === 'success' ? '0 8px 30px rgba(48,209,88,.4)' : undefined
+                                }}
+                            >
+                                {ripples.map(r => (
+                                    <span key={r.id} className="ripple-effect" style={{left:r.x,top:r.y,width:'20px',height:'20px',marginLeft:'-10px',marginTop:'-10px'}}/>
+                                ))}
+                                {status === 'printing' ? (
+                                    <>
+                                        <div className="dot-bounce"><span/><span/><span/></div>
+                                        <span>{statusMsg || 'กำลังพิมพ์...'}</span>
+                                    </>
+                                ) : status === 'success' ? (
+                                    <>
+                                        <span className="success-icon" style={{fontSize:'22px'}}>✅</span>
+                                        <span>พิมพ์สำเร็จ!</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span style={{fontSize:'22px',animation:'wigglePrint 2s ease-in-out infinite'}}>🖨️</span>
+                                        <span>พิมพ์ {copies} แผ่น</span>
+                                    </>
+                                )}
+                            </button>
 
-                        {/* status hint */}
-                        {statusMsg && status !== 'printing' && (
-                            <p className="text-center text-sm font-bold mb-3 text-slate-300">{statusMsg}</p>
-                        )}
+                            {/* progress bar ตอน printing */}
+                            {status === 'printing' && (
+                                <div style={{marginTop:'8px',background:'rgba(255,255,255,.1)',borderRadius:'99px',overflow:'hidden',height:'3px'}}>
+                                    <div className="print-progress-bar"/>
+                                </div>
+                            )}
+                        </div>
 
-                        {/* ── ยังไม่ตั้งค่า warning ── */}
-                        {!isReady && status === 'idle' && (
-                            <div className="bg-yellow-900/50 border border-yellow-600 rounded-xl p-3 text-xs text-yellow-200 text-center mb-3">
-                                ⚙️ ยังไม่ได้ตั้งค่าเครื่องพิมพ์<br/>
-                                <span className="opacity-75">กด ⚙️ ที่หน้าหลักเพื่อใส่ Bridge URL หรือ IP เครื่องพิมพ์</span>
+                        {/* success message */}
+                        {status === 'success' && statusMsg && (
+                            <div className="anim-pop" style={{
+                                textAlign:'center',marginBottom:'12px',
+                                padding:'10px 16px',borderRadius:'14px',
+                                background:'rgba(48,209,88,.15)',
+                                border:'1px solid rgba(48,209,88,.3)',
+                                color:'#30d158',fontWeight:700,fontSize:'13px',
+                                animation:'pulseGlowGreen 2s ease-in-out infinite'
+                            }}>
+                                🎉 {statusMsg}
                             </div>
                         )}
 
-                        {/* ── ZPL toggle (ซ่อนไว้ ใช้เวลา debug) ── */}
-                        <button onClick={() => setShowZpl(v=>!v)} className="w-full py-2 text-slate-600 hover:text-slate-400 text-xs transition-colors text-center">
+                        {/* fallback hint */}
+                        {status === 'fallback' && (
+                            <div className="anim-pop" style={{
+                                textAlign:'center',marginBottom:'12px',padding:'10px',
+                                borderRadius:'14px',background:'rgba(255,159,10,.15)',
+                                border:'1px solid rgba(255,159,10,.3)',color:'#ff9f0a',fontSize:'13px',fontWeight:700
+                            }}>
+                                📌 {statusMsg}
+                            </div>
+                        )}
+
+                        {/* no config warning */}
+                        {!isReady && status === 'idle' && (
+                            <div className="anim-up-3" style={{
+                                padding:'12px',borderRadius:'14px',marginBottom:'12px',
+                                background:'rgba(255,214,10,.12)',border:'1px solid rgba(255,214,10,.3)',
+                                color:'#ffd60a',fontSize:'12px',textAlign:'center'
+                            }}>
+                                ⚙️ ยังไม่ได้ตั้งค่าเครื่องพิมพ์<br/>
+                                <span style={{opacity:.7}}>กด ⚙️ ที่หน้าหลักก่อน</span>
+                            </div>
+                        )}
+
+                        {/* ZPL toggle */}
+                        <button onClick={() => setShowZpl(v=>!v)}
+                            style={{width:'100%',padding:'8px',color:'rgba(255,255,255,.25)',fontSize:'11px',background:'none',border:'none',cursor:'pointer',transition:'color .2s'}}
+                            onMouseEnter={e=>e.target.style.color='rgba(255,255,255,.5)'}
+                            onMouseLeave={e=>e.target.style.color='rgba(255,255,255,.25)'}>
                             {showZpl ? '▲ ซ่อน ZPL' : '▼ ดู / Copy ZPL'}
                         </button>
                         {showZpl && (
-                            <div className="mt-2">
-                                <textarea readOnly value={zplText} onFocus={e=>e.target.select()} className="w-full text-[10px] font-mono bg-slate-800 text-green-300 rounded-xl p-3 resize-none border border-slate-600 outline-none" rows={4}/>
-                                <button onClick={() => navigator.clipboard.writeText(zplText).then(()=>setStatusMsg('✅ คัดลอกแล้ว!')).catch(()=>{})} className="mt-1 w-full py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded-xl transition-colors">
+                            <div className="anim-up" style={{marginTop:'4px'}}>
+                                <textarea readOnly value={zplText} onFocus={e=>e.target.select()}
+                                    style={{width:'100%',fontSize:'10px',fontFamily:'monospace',
+                                        background:'rgba(0,0,0,.4)',color:'#30d158',
+                                        borderRadius:'12px',padding:'10px',resize:'none',
+                                        border:'1px solid rgba(48,209,88,.2)',outline:'none',height:'80px'}}/>
+                                <button onClick={() => navigator.clipboard.writeText(zplText).catch(()=>{})}
+                                    style={{marginTop:'4px',width:'100%',padding:'8px',
+                                        background:'rgba(255,255,255,.08)',color:'rgba(255,255,255,.7)',
+                                        border:'1px solid rgba(255,255,255,.12)',borderRadius:'10px',
+                                        fontSize:'12px',cursor:'pointer',fontFamily:'inherit',
+                                        transition:'all .2s'}}
+                                    onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.15)'}
+                                    onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,.08)'}>
                                     📋 Copy ZPL
                                 </button>
                             </div>
@@ -940,6 +1196,7 @@
                     {/* Orbs */}
                     <div className="orb orb-1"></div>
                     <div className="orb orb-2"></div>
+                    <div className="orb orb-3"></div>
                     {/* Nav */}
                     <nav className="store-nav no-print">
                         <div style={{maxWidth:"1200px",margin:"0 auto",padding:"0 16px",height:"52px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
@@ -1041,7 +1298,7 @@
                     {/* Main Application UI - ส่วนนี้จะถูกซ่อนเวลาที่สั่งพิมพ์พรีวิว */}
                     <div className={`${labelPreview || stickerPreview ? "print-hide" : "no-print"}`} style={{maxWidth:"1200px",margin:"0 auto",padding:"16px 16px 60px"}}>
                         {/* Header */}
-                        <header className="glass-card anim-up" style={{marginBottom:"20px",padding:"16px 20px"}}>
+                        <header className="glass-card anim-up card-hover" style={{marginBottom:"20px",padding:"16px 20px"}}>
                             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:"16px",flexWrap:"wrap"}}>
                                 <div style={{display:"flex",alignItems:"center",gap:"14px"}}>
                                     <div style={{width:"44px",height:"44px",borderRadius:"12px",background:"linear-gradient(135deg,#0071e3,#0a84ff)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 4px 14px rgba(0,113,227,.3)"}}>
@@ -1068,7 +1325,7 @@
                         </header>
 
                         {/* Filters */}
-                        <section className="glass-card anim-up" style={{marginBottom:"16px",padding:"16px 20px",position:"relative",zIndex:30,animationDelay:"80ms"}}>
+                        <section className="glass-card anim-up-1" style={{marginBottom:"16px",padding:"16px 20px",position:"relative",zIndex:30}}>
                             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:"12px"}}>
                                 <div>
                                     <label style={{fontSize:"11px",fontWeight:700,textTransform:"uppercase",letterSpacing:".06em",color:"var(--t3)",marginBottom:"4px",display:"block"}}>ค้นหา</label>
@@ -1084,7 +1341,7 @@
                         </section>
 
                         {/* Table */}
-                        <div className="glass-card anim-up" style={{overflow:"hidden",animationDelay:"160ms"}}>
+                        <div className="glass-card anim-up-2" style={{overflow:"hidden"}}>
                             <div style={{overflowX:"auto"}}>
                                 <table className="data-table fit-table">
                                     <thead>
@@ -1097,7 +1354,7 @@
                                     </thead>
                                     <tbody>
                                         {filteredData.map((row, idx) => (
-                                            <tr key={idx} className="group">
+                                            <tr key={idx} className="group tr-stagger" style={{animationDelay:`${Math.min(idx*30,400)}ms`}}>
                                                 <td style={{verticalAlign:"top"}}>
                                                     <div className="column-a-container overflow-hidden">
                                                         <span className="column-a-text wrap-text" title={row[3]}>{row[0]||'---'}</span>
