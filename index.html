@@ -805,7 +805,7 @@
             return (
                 <div className="fixed inset-0 z-[400] flex flex-col items-center p-4 overflow-y-auto print:static print:bg-white print:p-0 print:block"
                     style={{background:'linear-gradient(135deg,#0a0a1a 0%,#1a0a2e 50%,#0a1a2e 100%)'}}>
-                    <style type="text/css">{`@media print { @page { size:100mm 25mm landscape; margin:0; } body { background:white!important; margin:0!important; padding:0!important; } .print-hide { display:none!important; } * { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; color-adjust:exact!important; } }`}</style>
+                    <style type="text/css">{`@media print { @page { size:100mm 25mm landscape; margin:0; } body { background:white!important; margin:0!important; padding:0!important; } .print-hide { display:none!important; } .print-label-root { display:flex!important; flex-direction:row!important; } * { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; color-adjust:exact!important; } }`}</style>
 
                     {/* animated bg particles */}
                     <div className="print-hide" style={{position:'fixed',inset:0,pointerEvents:'none',overflow:'hidden'}}>
@@ -996,15 +996,33 @@
                         )}
                     </div>
 
-                    {/* Label สำหรับ browser print */}
-                    <div className="bg-white w-[100mm] h-[25mm] hidden print:flex box-border overflow-hidden text-black" style={{fontFamily:"'Noto Sans Thai',sans-serif",display:"flex",flexDirection:"row"}}>
+                    {/* Label สำหรับ browser print — hidden ปกติ แสดงเฉพาะตอน print */}
+                    <div style={{
+                        display:'none',
+                        width:'100mm', height:'25mm',
+                        overflow:'hidden', boxSizing:'border-box',
+                        fontFamily:"'Noto Sans Thai',sans-serif",
+                        background:'white', color:'black',
+                        pageBreakBefore:'always'
+                    }} className="print-label-root">
                         {[1,2,3].map(n => (
-                            <div key={n} className="flex-1 flex flex-col items-center justify-between p-[1mm] border-r border-dashed border-gray-300 last:border-r-0 h-full box-border overflow-hidden">
-                                <div className="text-[7.5pt] font-extrabold w-full text-center whitespace-nowrap overflow-hidden text-ellipsis leading-none pt-[1mm]">{productName}</div>
-                                <div className="flex-grow flex items-center justify-center">
-                                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(sku)}`} alt="QR" className="h-[15mm] w-[15mm]" style={{imageRendering:'pixelated'}}/>
+                            <div key={n} style={{
+                                flex:1, display:'flex', flexDirection:'column',
+                                alignItems:'center', justifyContent:'space-between',
+                                padding:'1mm', boxSizing:'border-box', overflow:'hidden',
+                                borderRight: n < 3 ? '1px dashed #ccc' : 'none',
+                                height:'100%'
+                            }}>
+                                <div style={{fontSize:'7.5pt',fontWeight:900,width:'100%',textAlign:'center',
+                                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
+                                    lineHeight:1,paddingTop:'1mm',color:'black'}}>{productName}</div>
+                                <div style={{flexGrow:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(sku)}`}
+                                        alt="QR" style={{width:'15mm',height:'15mm',imageRendering:'pixelated'}}/>
                                 </div>
-                                <div className="text-[6.5pt] font-bold w-full text-center whitespace-nowrap overflow-hidden text-ellipsis leading-none pb-[1mm]">{variantName}</div>
+                                <div style={{fontSize:'6pt',fontWeight:700,width:'100%',textAlign:'center',
+                                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
+                                    lineHeight:1,paddingBottom:'1mm',color:'black'}}>{variantName}</div>
                             </div>
                         ))}
                     </div>
