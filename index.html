@@ -573,307 +573,180 @@
             );
         };
 
-        /* =================== Sticker Preview Modal (100x25mm 3-up) — Mobile ZPL Support =================== */
+        /* =================== Sticker Preview Modal — Smart Auto Print =================== */
         const StickerPreviewModal = ({ data, onClose, printerConfig }) => {
             const { row, copies } = data;
             const productName = String(row[3] || '');
-            const sku = String(row[1] || '');
+            const sku         = String(row[1] || '');
             const variantName = String(row[4] || '');
-            const [printStatus, setPrintStatus] = useState('idle'); // idle | sending | success | error | copied
+
+            // status: idle | trying_ws | trying_wifi | printing | success | fallback | error
+            const [status, setStatus]   = useState('idle');
             const [statusMsg, setStatusMsg] = useState('');
-            const [showZplText, setShowZplText] = useState(false);
-            const [wsState, setWsState] = useState('idle'); // idle | connecting | connected | error
+            const [showZpl, setShowZpl] = useState(false);
 
-            const { printerIP, printMode, bridgeUrl } = printerConfig;
+            const { printerIP, bridgeUrl } = printerConfig;
 
-            // ZPL สำหรับ 100x25mm 3-up layout (800×200 dots @ 203dpi)
             const generateZPL = () => {
                 const p = productName.substring(0, 25);
                 const v = variantName.substring(0, 25);
                 return `^XA^CI28^PW800^LL200^MD20\n^FO10,15^A0N,22,22^FB246,1,0,C^FD${p}^FS\n^FO68,38^BQN,2,5^FDQA,${sku}^FS\n^FO10,165^A0N,20,20^FB246,1,0,C^FD${v}^FS\n^FO276,15^A0N,22,22^FB246,1,0,C^FD${p}^FS\n^FO335,38^BQN,2,5^FDQA,${sku}^FS\n^FO276,165^A0N,20,20^FB246,1,0,C^FD${v}^FS\n^FO542,15^A0N,22,22^FB246,1,0,C^FD${p}^FS\n^FO601,38^BQN,2,5^FDQA,${sku}^FS\n^FO542,165^A0N,20,20^FB246,1,0,C^FD${v}^FS\n^PQ${copies}^XZ`;
             };
 
-            // ─── Mode WS: WebSocket Bridge → TCP → Zebra ───
-            const handleWsPrint = () => {
-                if (!bridgeUrl) {
-                    setStatusMsg('ยังไม่ได้ตั้ง WebSocket URL — กดไอคอน ⚙️ ตั้งค่าก่อน');
-                    setPrintStatus('error');
-                    return;
-                }
-                setPrintStatus('sending');
-                setStatusMsg('กำลังเชื่อมต่อ Bridge...');
-                setWsState('connecting');
-
-                let done = false;
+            // ── ลอง WebSocket Bridge ──
+            const tryWsBridge = () => new Promise((resolve, reject) => {
+                if (!bridgeUrl) { reject(new Error('no_bridge')); return; }
                 const url = bridgeUrl.startsWith('ws') ? bridgeUrl : `ws://${bridgeUrl}`;
-                let ws;
-                try { ws = new WebSocket(url); }
-                catch(e) {
-                    setStatusMsg(`URL ไม่ถูกต้อง: ${e.message}`);
-                    setPrintStatus('error'); setWsState('error'); return;
-                }
-
-                const timeout = setTimeout(() => {
-                    if (!done) {
-                        done = true;
-                        setStatusMsg('Timeout — Bridge ไม่ตอบสนองภายใน 8 วินาที');
-                        setPrintStatus('error'); setWsState('error');
-                        try { ws.close(); } catch {}
-                    }
-                }, 8000);
-
-                ws.onopen = () => {
-                    setWsState('connected');
-                    setStatusMsg('เชื่อมต่อ Bridge แล้ว — กำลัง render ภาษาไทย...');
-                    ws.send(JSON.stringify({ action: 'print', productName, variantName, sku, copies }));
-                };
-
-                ws.onmessage = (e) => {
-                    clearTimeout(timeout);
-                    done = true;
-                    let resp;
-                    try { resp = JSON.parse(e.data); } catch { resp = {}; }
+                let ws, done = false;
+                try { ws = new WebSocket(url); } catch(e) { reject(e); return; }
+                const t = setTimeout(() => { done=true; try{ws.close()}catch{}; reject(new Error('timeout')); }, 4000);
+                ws.onopen  = () => ws.send(JSON.stringify({ action:'print', productName, variantName, sku, copies }));
+                ws.onmessage = e => {
+                    if (done) return; done=true; clearTimeout(t);
+                    let r; try { r=JSON.parse(e.data); } catch { r={}; }
                     ws.close();
-                    if (resp.ok) {
-                        setPrintStatus('success');
-                        setStatusMsg(`✅ พิมพ์ ${copies} แผ่น → ${resp.printer || bridgeUrl} สำเร็จ!`);
-                        setWsState('idle');
-                        setTimeout(() => { setPrintStatus('idle'); setStatusMsg(''); }, 4000);
-                    } else {
-                        setPrintStatus('error');
-                        setStatusMsg(`❌ ${resp.error || 'Bridge ตอบกลับ error'}`);
-                        setWsState('error');
-                    }
+                    r.ok ? resolve(r) : reject(new Error(r.error||'bridge_error'));
                 };
+                ws.onerror  = () => { if(!done){done=true;clearTimeout(t);try{ws.close()}catch{};reject(new Error('ws_error'));} };
+                ws.onclose  = () => { if(!done){done=true;clearTimeout(t);reject(new Error('ws_closed'));} };
+            });
 
-                ws.onerror = () => {
-                    clearTimeout(timeout);
-                    if (!done) {
-                        done = true;
-                        setPrintStatus('error');
-                        setStatusMsg(`❌ เชื่อมต่อ Bridge ไม่ได้ — ตรวจสอบว่า node zpl-bridge.js กำลังรันอยู่`);
-                        setWsState('error');
-                    }
-                };
-
-                ws.onclose = () => { if (!done) { setWsState('idle'); } };
-            };
-
-            // ─── Mode 1: WiFi Direct ───
-            const handleWifiPrint = async () => {
-                setPrintStatus('sending'); setStatusMsg('กำลังส่ง ZPL...');
+            // ── ลอง WiFi Direct HTTP POST ──
+            const tryWifiDirect = () => new Promise(async (resolve, reject) => {
+                if (!printerIP) { reject(new Error('no_ip')); return; }
                 try {
                     const ctrl = new AbortController();
-                    const timer = setTimeout(() => ctrl.abort(), 5000);
-                    await fetch(`http://${printerIP}/pstprnt`, { method:'POST', mode:'no-cors', body:generateZPL(), signal: ctrl.signal });
-                    clearTimeout(timer);
-                    setPrintStatus('success'); setStatusMsg(`ส่ง ZPL → ${printerIP} แล้ว`);
-                    setTimeout(() => { setPrintStatus('idle'); setStatusMsg(''); }, 3000);
-                } catch (err) {
-                    setPrintStatus('error');
-                    setStatusMsg(err.name === 'AbortError' ? 'Timeout — เครื่องพิมพ์ไม่ตอบสนอง' : 'ถูกบล็อก Mixed Content — ลองโหมด WebSocket Bridge แทน');
+                    const t = setTimeout(() => ctrl.abort(), 4000);
+                    await fetch(`http://${printerIP}/pstprnt`, { method:'POST', mode:'no-cors', body:generateZPL(), signal:ctrl.signal });
+                    clearTimeout(t);
+                    resolve({ printer: printerIP });
+                } catch(e) { reject(e); }
+            });
+
+            // ── Smart Print: ลอง WS → WiFi → Browser ──
+            const handleSmartPrint = async () => {
+                setStatus('printing'); setStatusMsg('');
+
+                // 1. ลอง WebSocket Bridge ก่อน
+                if (bridgeUrl) {
+                    setStatusMsg('🔌 กำลังเชื่อมต่อ Bridge...');
+                    try {
+                        const r = await tryWsBridge();
+                        setStatus('success');
+                        setStatusMsg(`✅ พิมพ์ ${copies} แผ่น สำเร็จ!`);
+                        setTimeout(() => { setStatus('idle'); setStatusMsg(''); }, 4000);
+                        return;
+                    } catch(e) {
+                        console.warn('WS failed:', e.message);
+                    }
                 }
-            };
 
-            // ─── Mode 2: Zebra App ───
-            const handleZebraApp = () => {
-                const zpl = generateZPL();
-                window.location.href = `zpl://${encodeURIComponent(zpl)}`;
-                setTimeout(() => {
-                    setPrintStatus('copied');
-                    setStatusMsg('คัดลอก ZPL ไว้แล้ว (กรณี App ไม่เปิด)');
-                    navigator.clipboard.writeText(zpl).catch(() => {});
-                }, 1500);
-            };
+                // 2. ลอง WiFi Direct
+                if (printerIP) {
+                    setStatusMsg('📡 กำลังส่งตรงไปเครื่องพิมพ์...');
+                    try {
+                        await tryWifiDirect();
+                        setStatus('success');
+                        setStatusMsg(`✅ พิมพ์ ${copies} แผ่น สำเร็จ!`);
+                        setTimeout(() => { setStatus('idle'); setStatusMsg(''); }, 4000);
+                        return;
+                    } catch(e) {
+                        console.warn('WiFi failed:', e.message);
+                    }
+                }
 
-            // ─── Mode 3: Copy ZPL ───
-            const handleCopyZPL = async () => {
-                const zpl = generateZPL();
-                try {
-                    await navigator.clipboard.writeText(zpl);
-                    setPrintStatus('copied'); setStatusMsg('คัดลอกแล้ว!');
-                    setTimeout(() => { setPrintStatus('idle'); setStatusMsg(''); }, 3000);
-                } catch { setShowZplText(true); setPrintStatus('copied'); setStatusMsg('กด Select All แล้ว Copy จาก textarea'); }
+                // 3. Fallback → window.print()
+                setStatus('fallback');
+                setStatusMsg(`📌 แก้ Copies เป็น ${copies} แล้วกดพิมพ์`);
+                window.print();
+                setTimeout(() => { setStatus('idle'); setStatusMsg(''); }, 5000);
             };
-
-            const handleBrowserPrint = () => window.print();
 
             const zplText = generateZPL();
-            const zplQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(zplText.substring(0, 900))}`;
-            const isWifiMode = printMode === 'wifi';
+            const isReady = !!(bridgeUrl || printerIP);
 
             return (
                 <div className="fixed inset-0 bg-slate-900/95 z-[400] flex flex-col items-center p-4 overflow-y-auto print:static print:bg-white print:p-0 print:block">
-                    <style type="text/css">{`@media print { @page { size: 100mm 25mm; margin: 0; } body { background: white !important; } .print-hide { display: none !important; } * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; } }`}</style>
+                    <style type="text/css">{`@media print { @page { size:100mm 25mm; margin:0; } body { background:white!important; } .print-hide { display:none!important; } * { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; } }`}</style>
 
-                    <div className="w-full max-w-lg print-hide mt-4">
-                        {/* Top bar */}
-                        <div className="flex justify-between items-center mb-5">
-                            <button onClick={onClose} className="px-4 py-2.5 bg-slate-700 text-white rounded-xl font-bold text-sm hover:bg-slate-600 transition-colors flex items-center gap-2">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-                                กลับ
+                    <div className="w-full max-w-sm print-hide mt-6">
+
+                        {/* ── Top bar ── */}
+                        <div className="flex items-center gap-3 mb-5">
+                            <button onClick={onClose} className="w-10 h-10 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded-xl transition-colors flex-shrink-0">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
                             </button>
-                            <div className="text-center">
-                                <p className="text-white font-black text-base">{productName.substring(0,20)}</p>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-white font-black truncate">{productName}</p>
                                 <p className="text-slate-400 text-xs">{copies} แผ่น × 3 = {copies*3} ดวง</p>
                             </div>
-                            <div className="w-20"/>
                         </div>
 
-                        {/* Label Preview */}
+                        {/* ── Label Preview ── */}
                         <div className="flex justify-center mb-5">
-                            <div className="bg-white w-[300px] h-[75px] flex box-border rounded-lg overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.5)]" style={{ fontFamily: "'Noto Sans Thai', sans-serif" }}>
-                                {[1, 2, 3].map((num) => (
-                                    <div key={num} className="flex-1 flex flex-col items-center justify-between py-1 px-0.5 border-r border-dashed border-gray-300 last:border-r-0 overflow-hidden">
+                            <div className="bg-white w-[300px] h-[75px] flex rounded-xl overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.5)]" style={{fontFamily:"'Noto Sans Thai',sans-serif"}}>
+                                {[1,2,3].map(n => (
+                                    <div key={n} className="flex-1 flex flex-col items-center justify-between py-1 px-0.5 border-r border-dashed border-gray-300 last:border-r-0 overflow-hidden">
                                         <div className="text-[5.5pt] font-extrabold w-full text-center truncate text-black leading-none">{productName}</div>
-                                        <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(sku)}`} alt="QR" className="w-10 h-10" style={{ imageRendering: 'pixelated' }} />
+                                        <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(sku)}`} alt="QR" className="w-10 h-10" style={{imageRendering:'pixelated'}}/>
                                         <div className="text-[4.5pt] font-bold w-full text-center truncate text-black leading-none">{variantName}</div>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
-                        {/* ─── Print Action Card ─── */}
-                        <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 mb-4">
+                        {/* ── Print Button ── */}
+                        <button
+                            onClick={handleSmartPrint}
+                            disabled={status === 'printing'}
+                            className={`w-full py-5 rounded-2xl font-black text-xl flex items-center justify-center gap-3 transition-all shadow-lg mb-3 ${
+                                status === 'success'  ? 'bg-green-500 text-white' :
+                                status === 'printing' ? 'bg-slate-600 text-white cursor-not-allowed' :
+                                status === 'fallback' ? 'bg-orange-500 text-white' :
+                                'bg-pink-500 hover:bg-pink-400 active:scale-95 text-white'
+                            }`}
+                        >
+                            {status === 'printing' && <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"/>}
+                            {status === 'success'  ? '✅ พิมพ์สำเร็จ!' :
+                             status === 'printing' ? statusMsg || 'กำลังพิมพ์...' :
+                             status === 'fallback' ? '🖨️ เปิดหน้าต่างพิมพ์...' :
+                             `🖨️ พิมพ์ ${copies} แผ่น`}
+                        </button>
 
-                            {/* Status message bar */}
-                            {statusMsg && (
-                                <div className={`text-sm font-bold px-3 py-2 rounded-xl mb-3 text-center ${printStatus === 'success' ? 'bg-green-900/60 text-green-200' : printStatus === 'error' ? 'bg-red-900/60 text-red-200' : 'bg-blue-900/60 text-blue-200'}`}>
-                                    {statusMsg}
-                                </div>
-                            )}
-
-                            {/* Mode: WebSocket Bridge ⭐ */}
-                            {printMode === 'ws' && (
-                                <div>
-                                    <p className="text-slate-300 text-xs mb-3 text-center">
-                                        🌐 WebSocket Bridge → Zebra TCP
-                                        {bridgeUrl && <span className="ml-1 text-green-400 font-bold">{bridgeUrl}</span>}
-                                    </p>
-                                    {!bridgeUrl && (
-                                        <div className="bg-yellow-900/50 border border-yellow-500 rounded-xl p-3 mb-3 text-xs text-yellow-200 text-center">
-                                            ⚠️ ยังไม่ได้ตั้ง Bridge URL — กดไอคอน <b>⚙️</b> ที่หน้าหลักก่อน
-                                        </div>
-                                    )}
-                                    <button
-                                        onClick={handleWsPrint}
-                                        disabled={printStatus === 'sending'}
-                                        className={`w-full py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-2 transition-all ${
-                                            printStatus === 'success' ? 'bg-green-500 text-white' :
-                                            printStatus === 'error'   ? 'bg-red-600 text-white' :
-                                            printStatus === 'sending' ? 'bg-slate-500 text-white cursor-not-allowed' :
-                                            'bg-pink-500 text-white hover:bg-pink-400 active:scale-95'
-                                        }`}>
-                                        {printStatus === 'sending' && <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"/>}
-                                        {printStatus === 'success' ? '✅ พิมพ์สำเร็จ!' :
-                                         printStatus === 'sending' ? `กำลังส่ง...` :
-                                         printStatus === 'error'   ? '❌ ลองอีกครั้ง' :
-                                         `🖨️ พิมพ์ ZPL ${copies} แผ่น`}
-                                    </button>
-                                    <p className="text-slate-500 text-[10px] text-center mt-2">
-                                        {wsState === 'connecting' ? '🟡 กำลังเชื่อมต่อ...' :
-                                         wsState === 'connected'  ? '🟢 เชื่อมต่อแล้ว' :
-                                         wsState === 'error'      ? '🔴 เชื่อมต่อไม่ได้' :
-                                         '⚪ พร้อมพิมพ์'}
-                                    </p>
-                                </div>
-                            )}
-
-                            {/* Mode: WiFi Direct */}
-                            {isWifiMode && (
-                                <div>
-                                    <p className="text-slate-300 text-xs mb-3 text-center">📡 WiFi Direct → <span className="text-white font-bold">{printerIP}</span></p>
-                                    {printStatus === 'error' && (
-                                        <div className="bg-red-900/60 border border-red-400 rounded-xl p-3 mb-3 text-sm text-red-200 text-center">
-                                            ⚠️ ส่งไม่ได้ — อาจโดน Mixed Content บล็อก<br/>
-                                            <span className="text-xs opacity-80">แนะนำเปลี่ยนเป็นโหมด <b>WebSocket Bridge</b></span>
-                                        </div>
-                                    )}
-                                    <button
-                                        onClick={handleWifiPrint}
-                                        disabled={printStatus === 'sending'}
-                                        className={`w-full py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-2 transition-all ${printStatus === 'success' ? 'bg-green-500 text-white' : printStatus === 'sending' ? 'bg-slate-500 text-white' : 'bg-pink-500 text-white hover:bg-pink-400 active:scale-95'}`}>
-                                        {printStatus === 'sending' && <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"/>}
-                                        {printStatus === 'success' ? '✅ ส่งพิมพ์แล้ว!' : printStatus === 'sending' ? 'กำลังส่ง...' : `🖨️ พิมพ์ ZPL ${copies} แผ่น`}
-                                    </button>
-                                </div>
-                            )}
-
-                            {/* Mode: Zebra App */}
-                            {printMode === 'zebra_app' && (
-                                <div>
-                                    <p className="text-slate-300 text-xs mb-3 text-center">📱 เปิด Zebra Print App บนมือถือ</p>
-                                    <button onClick={handleZebraApp} className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-lg flex items-center justify-center gap-2 active:scale-95 transition-all mb-3">
-                                        📲 เปิด Zebra App + ส่ง ZPL
-                                    </button>
-                                    <p className="text-slate-400 text-xs text-center">ต้องติดตั้ง <b className="text-white">Zebra Print Station</b> หรือ <b className="text-white">ZPL Printer</b> บนมือถือก่อน</p>
-                                </div>
-                            )}
-
-                            {/* Mode: Copy ZPL */}
-                            {printMode === 'copy_zpl' && (
-                                <div>
-                                    <p className="text-slate-300 text-xs mb-3 text-center">📋 คัดลอก ZPL ไปวางในแอปพิมพ์</p>
-                                    <button onClick={handleCopyZPL} className={`w-full py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-2 active:scale-95 transition-all mb-3 ${printStatus === 'copied' ? 'bg-green-500 text-white' : 'bg-violet-600 hover:bg-violet-500 text-white'}`}>
-                                        {printStatus === 'copied' ? '✅ คัดลอกแล้ว!' : '📋 Copy ZPL Command'}
-                                    </button>
-                                    {showZplText && (
-                                        <textarea readOnly value={zplText} onFocus={e => e.target.select()} className="w-full text-xs font-mono bg-slate-800 text-green-300 rounded-xl p-3 resize-none border border-slate-600 outline-none" rows={5}/>
-                                    )}
-                                    <button onClick={() => setShowZplText(v => !v)} className="w-full py-2 text-slate-400 text-xs hover:text-white transition-colors">
-                                        {showZplText ? '▲ ซ่อน ZPL' : '▼ ดู ZPL text'}
-                                    </button>
-                                </div>
-                            )}
-
-                            {/* Mode: QR ZPL */}
-                            {printMode === 'qr_zpl' && (
-                                <div className="flex flex-col items-center">
-                                    <p className="text-slate-300 text-xs mb-3 text-center">📷 สแกน QR นี้ด้วยแอปพิมพ์บนมือถือ</p>
-                                    <div className="bg-white p-3 rounded-2xl mb-3">
-                                        <img src={zplQrUrl} alt="ZPL QR" className="w-44 h-44" />
-                                    </div>
-                                    <p className="text-slate-400 text-xs text-center">ใช้กับ <b className="text-white">Bartender Mobile</b> หรือ <b className="text-white">ZPL Printer App</b></p>
-                                    <p className="text-slate-500 text-[10px] mt-1 text-center">⚠️ ZPL ยาวเกิน 900 ตัวอักษรอาจ QR ไม่ได้</p>
-                                </div>
-                            )}
-
-                            {/* Mode: Browser print */}
-                            {printMode === '' && (
-                                <div>
-                                    <div className="bg-yellow-900/50 border border-yellow-500 rounded-xl p-3 mb-3 text-sm text-yellow-200 text-center">
-                                        📌 เปิดหน้าต่างพิมพ์ แล้วแก้ <b>Copies = {copies}</b>
-                                    </div>
-                                    <button onClick={handleBrowserPrint} className="w-full py-4 bg-pink-500 hover:bg-pink-400 text-white rounded-2xl font-black text-lg flex items-center justify-center gap-2 active:scale-95 transition-all">
-                                        🖨️ เปิดหน้าต่างพิมพ์
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* ─── Quick ZPL text toggle ─── */}
-                        {printMode !== 'copy_zpl' && (
-                            <button onClick={() => setShowZplText(v => !v)} className="w-full py-2 text-slate-500 text-xs hover:text-slate-300 transition-colors text-center">
-                                {showZplText ? '▲ ซ่อน ZPL Command' : '▼ ดู / Copy ZPL Command'}
-                            </button>
+                        {/* status hint */}
+                        {statusMsg && status !== 'printing' && (
+                            <p className="text-center text-sm font-bold mb-3 text-slate-300">{statusMsg}</p>
                         )}
-                        {showZplText && printMode !== 'copy_zpl' && (
+
+                        {/* ── ยังไม่ตั้งค่า warning ── */}
+                        {!isReady && status === 'idle' && (
+                            <div className="bg-yellow-900/50 border border-yellow-600 rounded-xl p-3 text-xs text-yellow-200 text-center mb-3">
+                                ⚙️ ยังไม่ได้ตั้งค่าเครื่องพิมพ์<br/>
+                                <span className="opacity-75">กด ⚙️ ที่หน้าหลักเพื่อใส่ Bridge URL หรือ IP เครื่องพิมพ์</span>
+                            </div>
+                        )}
+
+                        {/* ── ZPL toggle (ซ่อนไว้ ใช้เวลา debug) ── */}
+                        <button onClick={() => setShowZpl(v=>!v)} className="w-full py-2 text-slate-600 hover:text-slate-400 text-xs transition-colors text-center">
+                            {showZpl ? '▲ ซ่อน ZPL' : '▼ ดู / Copy ZPL'}
+                        </button>
+                        {showZpl && (
                             <div className="mt-2">
-                                <textarea readOnly value={zplText} onFocus={e => e.target.select()} className="w-full text-xs font-mono bg-slate-800 text-green-300 rounded-xl p-3 resize-none border border-slate-600 outline-none" rows={5} />
-                                <button onClick={() => { navigator.clipboard.writeText(zplText).then(() => setPrintStatus('copied')).catch(() => {}); }} className="mt-1 w-full py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded-xl transition-colors">
-                                    {printStatus === 'copied' ? '✅ คัดลอกแล้ว!' : '📋 Copy ZPL'}
+                                <textarea readOnly value={zplText} onFocus={e=>e.target.select()} className="w-full text-[10px] font-mono bg-slate-800 text-green-300 rounded-xl p-3 resize-none border border-slate-600 outline-none" rows={4}/>
+                                <button onClick={() => navigator.clipboard.writeText(zplText).then(()=>setStatusMsg('✅ คัดลอกแล้ว!')).catch(()=>{})} className="mt-1 w-full py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded-xl transition-colors">
+                                    📋 Copy ZPL
                                 </button>
                             </div>
                         )}
                     </div>
 
-                    {/* ตัว Label สำหรับ browser print */}
-                    <div className="bg-white w-[100mm] h-[25mm] hidden print:flex box-border overflow-hidden text-black font-sans" style={{ fontFamily: "'Noto Sans Thai', -apple-system, sans-serif" }}>
-                        {[1, 2, 3].map((num) => (
-                            <div key={num} className="flex-1 flex flex-col items-center justify-between p-[1mm] border-r border-dashed border-gray-300 last:border-r-0 h-full box-border overflow-hidden">
+                    {/* Label สำหรับ browser print */}
+                    <div className="bg-white w-[100mm] h-[25mm] hidden print:flex box-border overflow-hidden text-black" style={{fontFamily:"'Noto Sans Thai',sans-serif"}}>
+                        {[1,2,3].map(n => (
+                            <div key={n} className="flex-1 flex flex-col items-center justify-between p-[1mm] border-r border-dashed border-gray-300 last:border-r-0 h-full box-border overflow-hidden">
                                 <div className="text-[7.5pt] font-extrabold w-full text-center whitespace-nowrap overflow-hidden text-ellipsis leading-none pt-[1mm]">{productName}</div>
                                 <div className="flex-grow flex items-center justify-center">
-                                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(sku)}`} alt="QR" className="h-[15mm] w-[15mm]" style={{ imageRendering: 'pixelated' }} />
+                                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(sku)}`} alt="QR" className="h-[15mm] w-[15mm]" style={{imageRendering:'pixelated'}}/>
                                 </div>
                                 <div className="text-[6.5pt] font-bold w-full text-center whitespace-nowrap overflow-hidden text-ellipsis leading-none pb-[1mm]">{variantName}</div>
                             </div>
@@ -901,7 +774,6 @@
             const [labelPreview, setLabelPreview] = useState(null);
 
             const [printerIP, setPrinterIP] = useState(() => localStorage.getItem('ls_printer_ip') || '');
-            const [printMode, setPrintMode] = useState(() => { const v = localStorage.getItem('ls_print_mode'); return v !== null ? v : ''; });
             const [bridgeUrl, setBridgeUrl] = useState(() => localStorage.getItem('ls_bridge_url') || '');
             const [isSettingsOpen, setIsSettingsOpen] = useState(false);
             const [searchTerm, setSearchTerm] = useState('');
@@ -1123,105 +995,44 @@
                         <StickerPreviewModal
                             data={stickerPreview}
                             onClose={() => setStickerPreview(null)}
-                            printerConfig={{ printerIP, printMode, bridgeUrl }}
+                            printerConfig={{ printerIP, bridgeUrl }}
                         />
                     )}
 
                     {/* Settings Modal */}
                     {isSettingsOpen && (
                         <div className="settings-bg" onClick={()=>setIsSettingsOpen(false)}>
-                            <div className="settings-box" style={{maxWidth:"440px"}} onClick={e=>e.stopPropagation()}>
+                            <div className="settings-box" style={{maxWidth:"400px"}} onClick={e=>e.stopPropagation()}>
                                 <div style={{display:"flex",alignItems:"center",gap:"12px",marginBottom:"20px"}}>
-                                    <div className="modal-icon" style={{background:"rgba(0,113,227,.08)",color:"var(--accent)"}}>
-                                        <svg style={{width:"22px",height:"22px"}} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-                                    </div>
+                                    <div className="modal-icon" style={{background:"rgba(0,113,227,.08)",color:"var(--accent)"}}>🖨️</div>
                                     <div>
-                                        <h3 style={{fontWeight:800,fontSize:"17px",color:"var(--t1)"}}>ตั้งค่าการพิมพ์ ZPL</h3>
-                                        <p style={{fontSize:"12px",color:"var(--t3)"}}>เลือกวิธีที่เหมาะกับอุปกรณ์ของคุณ</p>
+                                        <h3 style={{fontWeight:800,fontSize:"17px",color:"var(--t1)"}}>ตั้งค่าเครื่องพิมพ์</h3>
+                                        <p style={{fontSize:"12px",color:"var(--t3)"}}>ตั้งครั้งเดียว — จำไว้อัตโนมัติ</p>
                                     </div>
                                 </div>
 
-                                {/* Print Mode Selector */}
+                                {/* Bridge URL */}
+                                <div style={{marginBottom:"14px"}}>
+                                    <label className="modal-label">Bridge URL <span style={{color:"var(--green)",fontWeight:700}}>(แนะนำ — ใช้บนมือถือได้)</span></label>
+                                    <input type="text" className="input-base" placeholder="ws://192.168.1.100:9200" value={bridgeUrl} onChange={e=>setBridgeUrl(e.target.value)} />
+                                    <p style={{fontSize:"11px",color:"var(--t3)",marginTop:"4px"}}>URL จาก terminal ที่รัน <b>node zpl-bridge.js</b></p>
+                                </div>
+
+                                <div style={{textAlign:"center",fontSize:"11px",color:"var(--t3)",margin:"8px 0"}}>— หรือ —</div>
+
+                                {/* Printer IP */}
                                 <div style={{marginBottom:"16px"}}>
-                                    <label className="modal-label" style={{marginBottom:"8px",display:"block"}}>โหมดการพิมพ์</label>
-                                    {[
-                                        { value: 'ws',        icon: '🌐', label: 'WebSocket Bridge ⭐', desc: 'มือถือ → Node.js Bridge → Zebra TCP (แนะนำ!)' },
-                                        { value: 'wifi',      icon: '📡', label: 'WiFi Direct',      desc: 'ส่ง ZPL ตรงไปยัง IP เครื่องพิมพ์ (ใช้ได้บน PC / http://)' },
-                                        { value: 'zebra_app', icon: '📲', label: 'Zebra App',         desc: 'เปิด Zebra Print Station บนมือถือ Android/iOS' },
-                                        { value: 'copy_zpl',  icon: '📋', label: 'Copy ZPL',          desc: 'คัดลอก ZPL command ไปวางในแอปพิมพ์เอง' },
-                                        { value: 'qr_zpl',   icon: '📷', label: 'QR Code ZPL',       desc: 'แสดง QR ของ ZPL ให้สแกนด้วยแอปพิมพ์' },
-                                        { value: '',          icon: '🖥️', label: 'Browser Print',      desc: 'พิมพ์ผ่านหน้าต่าง browser (ต้องแก้ Copies เอง)' },
-                                    ].map(m => (
-                                        <div
-                                            key={m.value}
-                                            onClick={() => { setPrintMode(m.value); }}
-                                            style={{
-                                                display:"flex",alignItems:"center",gap:"10px",padding:"10px 12px",
-                                                borderRadius:"12px",marginBottom:"6px",cursor:"pointer",
-                                                border: printMode === m.value ? "2px solid var(--accent)" : "1.5px solid var(--border)",
-                                                background: printMode === m.value ? "rgba(0,113,227,.06)" : "#fafafa",
-                                                transition:"all .2s"
-                                            }}
-                                        >
-                                            <span style={{fontSize:"20px",flexShrink:0}}>{m.icon}</span>
-                                            <div style={{flex:1}}>
-                                                <p style={{fontWeight:700,fontSize:"13px",color:"var(--t1)"}}>{m.label}</p>
-                                                <p style={{fontSize:"11px",color:"var(--t3)",marginTop:"1px"}}>{m.desc}</p>
-                                            </div>
-                                            {printMode === m.value && <div style={{width:"8px",height:"8px",borderRadius:"50%",background:"var(--accent)",flexShrink:0}}/>}
-                                        </div>
-                                    ))}
+                                    <label className="modal-label">IP เครื่องพิมพ์ <span style={{color:"var(--t3)",fontWeight:400}}>(WiFi Direct — ใช้ได้บน PC)</span></label>
+                                    <input type="text" inputMode="decimal" className="input-base" placeholder="เช่น 192.168.1.50" value={printerIP} onChange={e=>setPrinterIP(e.target.value)} />
                                 </div>
 
-                                {/* IP Input (แสดงเฉพาะ wifi mode) */}
-                                {printMode === 'wifi' && (
-                                    <div style={{marginBottom:"14px"}}>
-                                        <label className="modal-label">IP เครื่องพิมพ์</label>
-                                        <input type="text" inputMode="decimal" className="input-base" placeholder="เช่น 192.168.1.50" value={printerIP} onChange={e=>setPrinterIP(e.target.value)} />
-                                        <p style={{fontSize:"11px",color:"var(--t3)",marginTop:"4px"}}>⚠️ บน mobile browser ที่ใช้ https:// อาจถูกบล็อก Mixed Content</p>
-                                    </div>
-                                )}
-
-                                {/* WebSocket Bridge mode */}
-                                {printMode === 'ws' && (
-                                    <div style={{marginBottom:"14px"}}>
-                                        <label className="modal-label">WebSocket URL ของ Bridge Server</label>
-                                        <input type="text" className="input-base" placeholder="ws://192.168.1.100:9200" value={bridgeUrl} onChange={e=>setBridgeUrl(e.target.value)} />
-                                        <p style={{fontSize:"11px",color:"var(--t3)",marginTop:"4px"}}>IP ของ PC ที่รัน <b>zpl-bridge.js</b> อยู่</p>
-                                        <div style={{background:"rgba(48,209,88,.08)",border:"1px solid rgba(48,209,88,.25)",borderRadius:"10px",padding:"10px 12px",fontSize:"11px",color:"#1a7a3a",lineHeight:1.7,marginTop:"8px"}}>
-                                            <b>✅ วิธีรัน Bridge (ทำครั้งเดียวบน PC):</b><br/>
-                                            1. ดาวน์โหลด <b>Node.js</b> จาก nodejs.org<br/>
-                                            2. แก้ <b>ZPL_HOST</b> ใน <b>zpl-bridge.js</b> ให้เป็น IP เครื่องพิมพ์<br/>
-                                            3. รัน: <code style={{background:"#e8f5e9",padding:"1px 5px",borderRadius:"4px"}}>npm install ws</code><br/>
-                                            4. รัน: <code style={{background:"#e8f5e9",padding:"1px 5px",borderRadius:"4px"}}>node zpl-bridge.js</code><br/>
-                                            5. นำ URL ที่ขึ้นบน terminal มาใส่ช่องด้านบน
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Zebra App hint */}
-                                {printMode === 'zebra_app' && (
-                                    <div style={{background:"rgba(10,132,255,.07)",borderRadius:"12px",padding:"10px 14px",fontSize:"11px",color:"var(--blue)",lineHeight:1.6,marginBottom:"14px"}}>
-                                        📥 ต้องติดตั้งบนมือถือก่อน:<br/>
-                                        • Android: <b>Zebra Print Station</b> (Play Store)<br/>
-                                        • iOS: <b>Zebra Printer</b> (App Store)<br/>
-                                        • หรือ <b>ZPL Printer</b> โดย Zebra Technologies
-                                    </div>
-                                )}
-
-                                {/* Copy / QR hint */}
-                                {(printMode === 'copy_zpl' || printMode === 'qr_zpl') && (
-                                    <div style={{background:"rgba(191,90,242,.07)",borderRadius:"12px",padding:"10px 14px",fontSize:"11px",color:"var(--purple)",lineHeight:1.6,marginBottom:"14px"}}>
-                                        💡 แอปที่รองรับ:<br/>
-                                        • <b>Bartender Mobile</b> (Seagull Scientific)<br/>
-                                        • <b>ZPL Printer</b>, <b>LabelMark Mobile</b><br/>
-                                        • หรือส่ง ZPL text ผ่าน Line → ให้ PC พิมพ์ต่อ
-                                    </div>
-                                )}
+                                <div style={{background:"rgba(0,113,227,.06)",borderRadius:"12px",padding:"10px 14px",fontSize:"11px",color:"var(--accent)",lineHeight:1.7,marginBottom:"16px"}}>
+                                    🤖 <b>Auto-detect:</b> กดพิมพ์ครั้งเดียว — ระบบจะลอง Bridge → WiFi → Browser ให้อัตโนมัติ
+                                </div>
 
                                 <div style={{display:"flex",gap:"8px"}}>
                                     <button onClick={()=>setIsSettingsOpen(false)} className="btn-ghost" style={{flex:1,justifyContent:"center"}}>ยกเลิก</button>
-                                    <button onClick={()=>{ localStorage.setItem('ls_print_mode', printMode); localStorage.setItem('ls_printer_ip', printerIP); localStorage.setItem('ls_bridge_url', bridgeUrl); setIsSettingsOpen(false); }} className="btn-primary" style={{flex:1,justifyContent:"center"}}>บันทึก</button>
+                                    <button onClick={()=>{ localStorage.setItem('ls_bridge_url',bridgeUrl); localStorage.setItem('ls_printer_ip',printerIP); setIsSettingsOpen(false); }} className="btn-primary" style={{flex:1,justifyContent:"center"}}>บันทึก</button>
                                 </div>
                             </div>
                         </div>
