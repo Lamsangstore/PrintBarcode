@@ -624,8 +624,8 @@
 
                 ws.onopen = () => {
                     setWsState('connected');
-                    setStatusMsg('เชื่อมต่อ Bridge แล้ว — กำลังส่ง ZPL...');
-                    ws.send(JSON.stringify({ action: 'print', zpl: generateZPL(), copies }));
+                    setStatusMsg('เชื่อมต่อ Bridge แล้ว — กำลัง render ภาษาไทย...');
+                    ws.send(JSON.stringify({ action: 'print', productName, variantName, sku, copies }));
                 };
 
                 ws.onmessage = (e) => {
@@ -700,7 +700,7 @@
 
             const zplText = generateZPL();
             const zplQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(zplText.substring(0, 900))}`;
-            const isWifiMode = printMode === 'wifi' || (!printMode && printerIP);
+            const isWifiMode = printMode === 'wifi';
 
             return (
                 <div className="fixed inset-0 bg-slate-900/95 z-[400] flex flex-col items-center p-4 overflow-y-auto print:static print:bg-white print:p-0 print:block">
@@ -839,7 +839,7 @@
                             )}
 
                             {/* Mode: Browser print */}
-                            {!printMode && !printerIP && (
+                            {printMode === '' && (
                                 <div>
                                     <div className="bg-yellow-900/50 border border-yellow-500 rounded-xl p-3 mb-3 text-sm text-yellow-200 text-center">
                                         📌 เปิดหน้าต่างพิมพ์ แล้วแก้ <b>Copies = {copies}</b>
@@ -901,7 +901,7 @@
             const [labelPreview, setLabelPreview] = useState(null);
 
             const [printerIP, setPrinterIP] = useState(() => localStorage.getItem('ls_printer_ip') || '');
-            const [printMode, setPrintMode] = useState(() => localStorage.getItem('ls_print_mode') ?? 'ws');
+            const [printMode, setPrintMode] = useState(() => { const v = localStorage.getItem('ls_print_mode'); return v !== null ? v : ''; });
             const [bridgeUrl, setBridgeUrl] = useState(() => localStorage.getItem('ls_bridge_url') || '');
             const [isSettingsOpen, setIsSettingsOpen] = useState(false);
             const [searchTerm, setSearchTerm] = useState('');
