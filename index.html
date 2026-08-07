@@ -417,7 +417,7 @@ const LabelPreviewModal = ({ data, onClose, onBack }) => (
 );
 
 const StickerQuantityModal = ({ row, onClose, onProceed }) => {
-    const productName=String(row[3]||''); const sku=String(row[1]||'');
+    const productName=String(row[3]||''); const sku=String(row[1]||''); const colorVal=String(row[8]||''); const sizeVal=String(row[9]||'');
     const [targetQty,setTargetQty]=useState('');
     const copies=useMemo(()=>{const q=parseInt(targetQty,10);if(isNaN(q)||q<=0)return 0;return Math.ceil(q/3);},[targetQty]);
     return (
@@ -427,7 +427,21 @@ const StickerQuantityModal = ({ row, onClose, onProceed }) => {
                     <div className="modal-icon" style={{background:"var(--accent-cont)",color:"var(--accent)"}}>🖨️</div>
                     <div><h3 style={{fontWeight:800,fontSize:"17px",color:"var(--t1)",fontFamily:"'Manrope',sans-serif"}}>คำนวณจำนวนสติกเกอร์</h3><p style={{fontSize:"12px",color:"var(--t3)"}}>1 แผ่น (แถว) พิมพ์ได้ 3 ดวง</p></div>
                 </div>
-                <div className="info-box" style={{marginBottom:"14px"}}><p className="modal-label">สินค้าที่ต้องการพิมพ์</p><p style={{fontWeight:700,fontSize:"15px",color:"var(--t1)"}}>{productName}</p><p style={{fontSize:"13px",color:"var(--t2)",marginTop:"4px"}}>SKU: {sku}</p></div>
+                <div className="info-box" style={{marginBottom:"14px"}}>
+                    <p className="modal-label">สินค้าที่ต้องการพิมพ์</p>
+                    <p style={{fontWeight:700,fontSize:"15px",color:"var(--t1)"}}>{productName}</p>
+                    <p style={{fontSize:"13px",color:"var(--t2)",marginTop:"4px"}}>SKU: {sku}</p>
+                    <div style={{display:"flex",gap:"10px",marginTop:"12px"}}>
+                        <div style={{flex:1,background:"var(--pink-cont)",border:"1.5px solid rgba(179,27,37,.18)",borderRadius:"var(--r-md)",padding:"10px 12px",textAlign:"center",minWidth:0}}>
+                            <p style={{fontSize:"11px",fontWeight:800,color:"#7a0010",opacity:.75,letterSpacing:".04em",marginBottom:"2px"}}>สี</p>
+                            <p style={{fontSize:"20px",fontWeight:900,color:"#7a0010",lineHeight:1.2,fontFamily:"'Manrope',sans-serif",overflowWrap:"anywhere"}}>{colorVal||'-'}</p>
+                        </div>
+                        <div style={{flex:1,background:"var(--blue-cont)",border:"1.5px solid rgba(56,96,117,.22)",borderRadius:"var(--r-md)",padding:"10px 12px",textAlign:"center",minWidth:0}}>
+                            <p style={{fontSize:"11px",fontWeight:800,color:"#164255",opacity:.75,letterSpacing:".04em",marginBottom:"2px"}}>ไซส์</p>
+                            <p style={{fontSize:"20px",fontWeight:900,color:"#164255",lineHeight:1.2,fontFamily:"'Manrope',sans-serif",overflowWrap:"anywhere"}}>{sizeVal||'-'}</p>
+                        </div>
+                    </div>
+                </div>
                 <div style={{marginBottom:"12px"}}><label className="modal-label">ต้องการใช้งานกี่ดวง?</label><input type="number" placeholder="เช่น 100" value={targetQty} onChange={e=>setTargetQty(e.target.value)} autoFocus className="input-base" style={{fontWeight:800,fontSize:"24px",textAlign:"center"}}/></div>
                 {copies>0&&(<div style={{background:"var(--accent-cont)",border:"1.5px solid rgba(0,104,79,.2)",borderRadius:"var(--r-md)",padding:"14px 16px",marginBottom:"14px",textAlign:"center"}}><p style={{fontSize:"13px",color:"var(--accent)",fontWeight:700,marginBottom:"4px"}}>{targetQty} ดวง ÷ 3 = {copies} แผ่น</p><p style={{fontSize:"13px",color:"var(--t3)"}}>รวม {copies*3} ดวง</p></div>)}
                 <div style={{display:"flex",gap:"8px"}}><button onClick={onClose} className="btn-ghost" style={{flex:1,justifyContent:"center"}}>ยกเลิก</button><button onClick={()=>{if(copies>0)onProceed(copies);}} disabled={copies<=0} className="btn-primary" style={{flex:2,justifyContent:"center",opacity:copies>0?1:.4,cursor:copies>0?"pointer":"not-allowed"}}>ไปหน้าพรีวิว →</button></div>
@@ -485,6 +499,201 @@ const StickerPreviewModal = ({ data, onClose, printerConfig }) => {
                 {!isReady&&status==='idle'&&(<div className="anim-up-3" style={{padding:'12px',borderRadius:'14px',marginBottom:'12px',background:'rgba(250,211,253,.12)',border:'1px solid rgba(111,81,116,.25)',color:'rgba(250,211,253,.8)',fontSize:'12px',textAlign:'center'}}>⚙️ ยังไม่ได้ตั้งค่าเครื่องพิมพ์<br/><span style={{opacity:.7}}>กด ⚙️ ที่หน้าหลักก่อน</span></div>)}
                 <button onClick={()=>setShowZpl(v=>!v)} style={{width:'100%',padding:'8px',color:'rgba(255,255,255,.25)',fontSize:'11px',background:'none',border:'none',cursor:'pointer',transition:'color .2s'}} onMouseEnter={e=>e.target.style.color='rgba(255,255,255,.5)'} onMouseLeave={e=>e.target.style.color='rgba(255,255,255,.25)'}>{showZpl?'▲ ซ่อน ZPL':'▼ ดู / Copy ZPL'}</button>
                 {showZpl&&(<div className="anim-up" style={{marginTop:'4px'}}><textarea readOnly value={zplText} onFocus={e=>e.target.select()} style={{width:'100%',fontSize:'10px',fontFamily:'monospace',background:'rgba(0,0,0,.4)',color:'#89f0cb',borderRadius:'12px',padding:'10px',resize:'none',border:'1px solid rgba(137,240,203,.2)',outline:'none',height:'80px'}}/><button onClick={()=>navigator.clipboard.writeText(zplText).catch(()=>{})} style={{marginTop:'4px',width:'100%',padding:'8px',background:'rgba(255,255,255,.08)',color:'rgba(255,255,255,.7)',border:'1px solid rgba(255,255,255,.12)',borderRadius:'10px',fontSize:'12px',cursor:'pointer',fontFamily:'inherit',transition:'all .2s'}} onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.15)'} onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,.08)'}>📋 Copy ZPL</button></div>)}
+            </div>
+        </div>
+    );
+};
+
+
+// ===== BATCH PRINT (เลือกหลายรายการ) =====
+const rowKeyOf=(row)=>[row[0],row[1],row[8],row[9]].join('|');
+
+const buildZplFor=({productName,variantName,sku,copies})=>{
+    const p=String(productName||'').substring(0,25); const v=String(variantName||'').substring(0,25); const s=String(sku||'');
+    return `^XA^CI28^PW1181^LL295^MD20\n^FO4,4^A0N,28,28^FB386,1,0,C^FD${p}^FS\n^FO90,40^BQN,2,8^FDQA,${s}^FS\n^FO4,262^A0N,26,26^FB386,1,0,C^FD${v}^FS\n^FO398,4^A0N,28,28^FB386,1,0,C^FD${p}^FS\n^FO484,40^BQN,2,8^FDQA,${s}^FS\n^FO398,262^A0N,26,26^FB386,1,0,C^FD${v}^FS\n^FO792,4^A0N,28,28^FB386,1,0,C^FD${p}^FS\n^FO878,40^BQN,2,8^FDQA,${s}^FS\n^FO792,262^A0N,26,26^FB386,1,0,C^FD${v}^FS\n^PQ${copies}^XZ`;
+};
+
+const wsPrintOnce=(bridgeUrl,payload)=>new Promise((res,rej)=>{
+    if(!bridgeUrl){rej(new Error('no_bridge'));return;}
+    const url=bridgeUrl.startsWith('ws')?bridgeUrl:`ws://${bridgeUrl}`;
+    let ws,done=false;
+    try{ws=new WebSocket(url);}catch(e){rej(e);return;}
+    const t=setTimeout(()=>{done=true;try{ws.close()}catch{};rej(new Error('timeout'));},8000);
+    ws.onopen=()=>ws.send(JSON.stringify({action:'print',...payload}));
+    ws.onmessage=e=>{if(done)return;done=true;clearTimeout(t);let r;try{r=JSON.parse(e.data);}catch{r={};}ws.close();r.ok?res(r):rej(new Error(r.error||'bridge_error'));};
+    ws.onerror=()=>{if(!done){done=true;clearTimeout(t);try{ws.close()}catch{};rej(new Error('ws_error'));}};
+    ws.onclose=()=>{if(!done){done=true;clearTimeout(t);rej(new Error('ws_closed'));}};
+});
+
+const wifiPrintOnce=async(printerIP,item)=>{
+    if(!printerIP)throw new Error('no_ip');
+    const c=new AbortController(); const t=setTimeout(()=>c.abort(),6000);
+    try{await fetch(`http://${printerIP}/pstprnt`,{method:'POST',mode:'no-cors',body:buildZplFor(item),signal:c.signal});}finally{clearTimeout(t);}
+    return {printer:printerIP};
+};
+
+const wait=(ms)=>new Promise(r=>setTimeout(r,ms));
+
+// เรียงหน้าตามลำดับ SKU: SKU แรกครบทุกแผ่นก่อน แล้วค่อยขึ้น SKU ถัดไป
+const openBatchPrintPopup=(items)=>{
+    const cell=(item,border)=>{
+        const iS='https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(item.sku);
+        const pN=String(item.productName||'').substring(0,28); const vN=String(item.variantName||'').substring(0,28);
+        return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:0.8mm;overflow:hidden;box-sizing:border-box;'+(border?'border-right:0.5px dashed #aaa;':'')+'">'
+            +'<div style="font-size:6.5pt;font-weight:900;width:100%;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1;color:#000;">'+pN+'</div>'
+            +'<img src="'+iS+'" style="width:17mm;height:17mm;image-rendering:pixelated;display:block;"/>'
+            +'<div style="font-size:5.5pt;font-weight:700;width:100%;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1;color:#000;">'+vN+'</div></div>';
+    };
+    var pages='';
+    items.forEach(function(item){
+        var sheet='<div class="sheet">'+cell(item,true)+cell(item,true)+cell(item,false)+'</div>';
+        for(var pi=0;pi<(item.copies||1);pi++){pages+=sheet;}
+    });
+    var old=document.getElementById('zpl-print-frame'); if(old)old.parentNode.removeChild(old);
+    var iframe=document.createElement('iframe'); iframe.id='zpl-print-frame';
+    iframe.style.cssText='position:fixed;left:-9999px;top:0;width:100mm;height:25mm;border:none;';
+    document.body.appendChild(iframe);
+    var doc=iframe.contentDocument||iframe.contentWindow.document;
+    doc.open();
+    doc.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><style>@page{size:100mm 25mm;margin:0;}html,body{margin:0;padding:0;background:white;-webkit-print-color-adjust:exact;print-color-adjust:exact;}body{font-family:Arial,Helvetica,sans-serif;}.sheet{width:100mm;height:25mm;display:flex;flex-direction:row;page-break-after:always;break-after:page;background:white;overflow:hidden;}.sheet:last-child{page-break-after:auto;break-after:auto;}*{box-sizing:border-box;}</style></head><body>'+pages+'</bo'+'dy></html>');
+    doc.close();
+    var imgs=doc.querySelectorAll('img'); var loaded=0; var total=imgs.length;
+    var doPrint=function(){iframe.contentWindow.focus();try{iframe.contentWindow.print();}catch(e){window.print();}setTimeout(function(){var f=document.getElementById('zpl-print-frame');if(f)f.parentNode.removeChild(f);},5000);};
+    if(total===0){setTimeout(doPrint,500);}
+    else{imgs.forEach(function(img){var onDone=function(){loaded++;if(loaded>=total)setTimeout(doPrint,600);};if(img.complete&&img.naturalWidth>0)onDone();else{img.onload=onDone;img.onerror=onDone;}});}
+};
+
+const BatchQuantityModal = ({ rows, onClose, onProceed, onRemove }) => {
+    const [qty,setQty]=useState({});
+    const items=useMemo(()=>rows.map(row=>{
+        const k=rowKeyOf(row); const q=parseInt(qty[k],10);
+        const pieces=(isNaN(q)||q<=0)?0:q;
+        return {key:k,row,productName:String(row[3]||''),variantName:String(row[4]||''),sku:String(row[1]||''),color:String(row[8]||''),size:String(row[9]||''),pieces,copies:pieces>0?Math.ceil(pieces/3):0};
+    }),[rows,qty]);
+    const ready=items.filter(i=>i.copies>0);
+    const totalSheets=ready.reduce((s,i)=>s+i.copies,0);
+    const totalPieces=ready.reduce((s,i)=>s+i.copies*3,0);
+    return (
+        <div className="modal-bg" onClick={onClose}>
+            <div className="modal-box" onClick={e=>e.stopPropagation()} style={{maxWidth:"560px",maxHeight:"90vh",display:"flex",flexDirection:"column"}}>
+                <div style={{display:"flex",alignItems:"center",gap:"12px",marginBottom:"16px",flexShrink:0}}>
+                    <div className="modal-icon" style={{background:"var(--accent-cont)",color:"var(--accent)"}}>🖨️</div>
+                    <div><h3 style={{fontWeight:800,fontSize:"17px",color:"var(--t1)",fontFamily:"'Manrope',sans-serif"}}>พิมพ์หลายรายการ</h3><p style={{fontSize:"12px",color:"var(--t3)"}}>ใส่จำนวนดวงของแต่ละรายการ · 1 แผ่น = 3 ดวง</p></div>
+                </div>
+                <div style={{overflowY:"auto",display:"flex",flexDirection:"column",gap:"10px",paddingRight:"4px",marginBottom:"14px"}}>
+                    {items.map((it,idx)=>(
+                        <div key={it.key} className="info-box" style={{padding:"12px 14px"}}>
+                            <div style={{display:"flex",alignItems:"flex-start",gap:"10px"}}>
+                                <span style={{flexShrink:0,width:"24px",height:"24px",borderRadius:"50%",background:"var(--accent-cont)",color:"var(--accent)",fontSize:"12px",fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Manrope',sans-serif"}}>{idx+1}</span>
+                                <div style={{flex:1,minWidth:0}}>
+                                    <p style={{fontWeight:700,fontSize:"14px",color:"var(--t1)",lineHeight:1.3,overflowWrap:"anywhere"}}>{it.productName}</p>
+                                    <p style={{fontSize:"12px",color:"var(--t3)",marginTop:"2px",overflowWrap:"anywhere"}}>SKU: {it.sku}</p>
+                                    <div style={{display:"flex",gap:"6px",marginTop:"7px",flexWrap:"wrap"}}>
+                                        <span className="badge badge-pink" style={{fontSize:"13px",padding:"4px 12px"}}>สี: {it.color||'-'}</span>
+                                        <span className="badge badge-blue" style={{fontSize:"13px",padding:"4px 12px"}}>ไซส์: {it.size||'-'}</span>
+                                    </div>
+                                </div>
+                                <button onClick={()=>onRemove(it.row)} title="เอาออก" style={{flexShrink:0,width:"26px",height:"26px",borderRadius:"50%",border:"1px solid var(--border)",background:"transparent",color:"var(--t3)",cursor:"pointer",fontSize:"14px",lineHeight:1}}>×</button>
+                            </div>
+                            <div style={{display:"flex",alignItems:"center",gap:"10px",marginTop:"10px"}}>
+                                <input type="number" min="1" placeholder="จำนวนดวง" value={qty[it.key]||''} onChange={e=>setQty(q=>({...q,[it.key]:e.target.value}))} className="input-base" style={{flex:1,fontWeight:800,fontSize:"18px",textAlign:"center",padding:"8px 12px"}}/>
+                                <span style={{fontSize:"13px",fontWeight:700,color:it.copies>0?"var(--accent)":"var(--t3)",whiteSpace:"nowrap",minWidth:"110px",textAlign:"right"}}>{it.copies>0?`${it.copies} แผ่น (${it.copies*3} ดวง)`:'— แผ่น'}</span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                {totalSheets>0&&(<div style={{background:"var(--accent-cont)",border:"1.5px solid rgba(0,104,79,.2)",borderRadius:"var(--r-md)",padding:"12px 16px",marginBottom:"12px",textAlign:"center",flexShrink:0}}><p style={{fontSize:"13px",color:"var(--accent)",fontWeight:700}}>รวม {ready.length} รายการ · {totalSheets} แผ่น · {totalPieces} ดวง</p></div>)}
+                <div style={{display:"flex",gap:"8px",flexShrink:0}}>
+                    <button onClick={onClose} className="btn-ghost" style={{flex:1,justifyContent:"center"}}>ยกเลิก</button>
+                    <button onClick={()=>{if(ready.length)onProceed(ready.map(({key,row,...rest})=>rest));}} disabled={!ready.length} className="btn-primary" style={{flex:2,justifyContent:"center",opacity:ready.length?1:.4,cursor:ready.length?"pointer":"not-allowed"}}>ไปหน้าพรีวิว →</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const BatchPreviewModal = ({ items, onClose, printerConfig }) => {
+    const {printerIP,bridgeUrl}=printerConfig;
+    const [status,setStatus]=useState('idle'); const [statusMsg,setStatusMsg]=useState(''); const [doneIdx,setDoneIdx]=useState(-1); const [curIdx,setCurIdx]=useState(-1); const [failed,setFailed]=useState([]);
+    const totalSheets=items.reduce((s,i)=>s+i.copies,0);
+    const isReady=!!(bridgeUrl||printerIP);
+
+    const runSequential=async(sendOne)=>{
+        const bad=[];
+        for(let i=0;i<items.length;i++){
+            const it=items[i];
+            setCurIdx(i); setStatusMsg(`กำลังพิมพ์ ${i+1}/${items.length} · ${it.color||'-'} / ${it.size||'-'} · ${it.copies} แผ่น`);
+            try{ await sendOne(it); setDoneIdx(i); }
+            catch(e){ console.warn('batch item failed:',it.sku,e.message); bad.push(it); }
+            if(i<items.length-1) await wait(800); // เว้นให้เครื่องพิมพ์จบงานก่อนส่งงานถัดไป
+        }
+        setCurIdx(-1); setFailed(bad);
+        return bad;
+    };
+
+    const handlePrint=async()=>{
+        if(status==='printing')return;
+        setStatus('printing'); setStatusMsg(''); setDoneIdx(-1); setFailed([]);
+        if(bridgeUrl){
+            const bad=await runSequential(it=>wsPrintOnce(bridgeUrl,{productName:it.productName,variantName:it.variantName,sku:it.sku,copies:it.copies}));
+            if(bad.length<items.length){
+                setStatus(bad.length?'partial':'success');
+                setStatusMsg(bad.length?`พิมพ์สำเร็จ ${items.length-bad.length}/${items.length} รายการ`:`พิมพ์ครบ ${items.length} รายการ (${totalSheets} แผ่น) สำเร็จ!`);
+                return;
+            }
+        }
+        if(printerIP){
+            const bad=await runSequential(it=>wifiPrintOnce(printerIP,it));
+            if(bad.length<items.length){
+                setStatus(bad.length?'partial':'success');
+                setStatusMsg(bad.length?`พิมพ์สำเร็จ ${items.length-bad.length}/${items.length} รายการ`:`พิมพ์ครบ ${items.length} รายการ (${totalSheets} แผ่น) สำเร็จ!`);
+                return;
+            }
+        }
+        openBatchPrintPopup(items);
+        setDoneIdx(items.length-1); setCurIdx(-1);
+        setStatus('fallback'); setStatusMsg(`เปิดหน้าต่างพิมพ์ ${totalSheets} แผ่น (เรียงตาม SKU ตามลำดับด้านล่าง) — ตั้ง Copies = 1`);
+    };
+
+    return (
+        <div className="fixed inset-0 z-[400] flex flex-col items-center p-4 overflow-y-auto print:static print:bg-white print:p-0 print:block" style={{background:'linear-gradient(135deg,#0a2d1e 0%,#1a3a28 50%,#0d2a40 100%)'}}>
+            <div className="w-full max-w-md print-hide mt-4" style={{position:'relative',zIndex:1}}>
+                <div className="flex items-center gap-3 mb-5 anim-up">
+                    <button onClick={onClose} className="w-10 h-10 flex items-center justify-center text-white rounded-full transition-all hover:scale-110 active:scale-90" style={{background:'rgba(255,255,255,.12)',backdropFilter:'blur(12px)',border:'1px solid rgba(255,255,255,.15)'}}><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-white font-black truncate text-lg" style={{fontFamily:"'Manrope',sans-serif",textShadow:'0 2px 8px rgba(0,0,0,.4)'}}>คิวพิมพ์ {items.length} รายการ</p>
+                        <p style={{color:'rgba(255,255,255,.5)',fontSize:'12px'}}>รวม <span style={{color:'#89f0cb',fontWeight:700}}>{totalSheets}</span> แผ่น · <span style={{color:'#89f0cb',fontWeight:700}}>{totalSheets*3}</span> ดวง · พิมพ์ทีละ SKU ตามลำดับ</p>
+                    </div>
+                </div>
+                <div className="anim-up-1 mb-5" style={{background:'rgba(255,255,255,.08)',backdropFilter:'blur(20px)',borderRadius:'20px',padding:'14px',border:'1px solid rgba(255,255,255,.12)',boxShadow:'0 8px 32px rgba(0,0,0,.3)'}}>
+                    <p style={{color:'rgba(255,255,255,.4)',fontSize:'10px',fontWeight:700,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:'10px',textAlign:'center',fontFamily:"'Manrope',sans-serif"}}>ลำดับการพิมพ์</p>
+                    <div style={{display:'flex',flexDirection:'column',gap:'8px',maxHeight:'42vh',overflowY:'auto'}}>
+                        {items.map((it,i)=>{
+                            const state=failed.includes(it)?'fail':(i<=doneIdx?'done':(i===curIdx?'now':'wait'));
+                            const mark=state==='done'?'✓':state==='fail'?'✕':state==='now'?'⏳':i+1;
+                            const col=state==='done'?'#89f0cb':state==='fail'?'#ffb4ab':state==='now'?'#fad3fd':'rgba(255,255,255,.45)';
+                            return (
+                                <div key={i} style={{display:'flex',alignItems:'center',gap:'10px',padding:'9px 11px',borderRadius:'12px',background:state==='now'?'rgba(250,211,253,.14)':'rgba(0,0,0,.18)',border:`1px solid ${state==='now'?'rgba(250,211,253,.35)':'rgba(255,255,255,.08)'}`}}>
+                                    <span style={{flexShrink:0,width:'22px',height:'22px',borderRadius:'50%',background:'rgba(255,255,255,.1)',color:col,fontSize:'11px',fontWeight:800,display:'flex',alignItems:'center',justifyContent:'center'}}>{mark}</span>
+                                    <div style={{flex:1,minWidth:0}}>
+                                        <p style={{color:'white',fontSize:'13px',fontWeight:700,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{it.productName}</p>
+                                        <p style={{color:'rgba(255,255,255,.55)',fontSize:'11px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>สี {it.color||'-'} · ไซส์ {it.size||'-'} · {it.sku}</p>
+                                    </div>
+                                    <span style={{flexShrink:0,color:'#89f0cb',fontSize:'12px',fontWeight:800,whiteSpace:'nowrap'}}>{it.copies} แผ่น</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+                <div className="anim-up-2 mb-3">
+                    <button onClick={handlePrint} disabled={status==='printing'} className="btn-gradient" style={{background:status==='success'?'linear-gradient(135deg,#005b45,#00a372)':status==='printing'?'linear-gradient(135deg,#444,#666)':undefined,animation:status==='success'||status==='printing'?'none':undefined}}>
+                        {status==='printing'?(<><div className="dot-bounce"><span/><span/><span/></div><span>{statusMsg||'กำลังพิมพ์...'}</span></>):status==='success'?(<><span className="success-icon" style={{fontSize:'22px'}}>✅</span><span>พิมพ์สำเร็จ!</span></>):(<><span style={{fontSize:'22px'}}>🖨️</span><span>พิมพ์ทั้งหมด {items.length} รายการ</span></>)}
+                    </button>
+                    {status==='printing'&&(<div style={{marginTop:'8px',background:'rgba(255,255,255,.1)',borderRadius:'99px',overflow:'hidden',height:'3px'}}><div className="print-progress-bar"/></div>)}
+                </div>
+                {(status==='success'||status==='partial')&&statusMsg&&(<div className="anim-pop" style={{textAlign:'center',marginBottom:'12px',padding:'10px 16px',borderRadius:'14px',background:status==='partial'?'rgba(179,27,37,.18)':'rgba(0,104,79,.2)',border:`1px solid ${status==='partial'?'rgba(255,180,171,.3)':'rgba(137,240,203,.3)'}`,color:status==='partial'?'#ffb4ab':'#89f0cb',fontWeight:700,fontSize:'13px'}}>{status==='partial'?'⚠️ ':'🎉 '}{statusMsg}</div>)}
+                {status==='fallback'&&(<div className="anim-pop" style={{textAlign:'center',marginBottom:'12px',padding:'10px',borderRadius:'14px',background:'rgba(250,211,253,.15)',border:'1px solid rgba(111,81,116,.3)',color:'#fad3fd',fontSize:'13px',fontWeight:700}}>📌 {statusMsg}</div>)}
+                {!isReady&&status==='idle'&&(<div className="anim-up-3" style={{padding:'12px',borderRadius:'14px',marginBottom:'12px',background:'rgba(250,211,253,.12)',border:'1px solid rgba(111,81,116,.25)',color:'rgba(250,211,253,.8)',fontSize:'12px',textAlign:'center'}}>⚙️ ยังไม่ได้ตั้งค่าเครื่องพิมพ์<br/><span style={{opacity:.7}}>ระบบจะเปิดหน้าต่างพิมพ์ของเบราว์เซอร์ให้แทน โดยเรียงหน้าตามลำดับ SKU</span></div>)}
             </div>
         </div>
     );
@@ -663,6 +872,9 @@ const labelH="รุ่น"; const labelI="สี"; const labelJ="ขนาด";
 const App = () => {
     const [rawData,setRawData]=useState([]); const [headers,setHeaders]=useState([]); const [loading,setLoading]=useState(false); const [error,setError]=useState(null);
     const [stickerPromptRow,setStickerPromptRow]=useState(null); const [stickerPreview,setStickerPreview]=useState(null);
+    const [selectedRows,setSelectedRows]=useState([]); const [batchPrompt,setBatchPrompt]=useState(false); const [batchPreview,setBatchPreview]=useState(null);
+    const selectedKeys=useMemo(()=>new Set(selectedRows.map(rowKeyOf)),[selectedRows]);
+    const toggleRow=(row)=>setSelectedRows(prev=>{const k=rowKeyOf(row);return prev.some(r=>rowKeyOf(r)===k)?prev.filter(r=>rowKeyOf(r)!==k):[...prev,row];});
     const [noticeRow,setNoticeRow]=useState(null); const [labelPreview,setLabelPreview]=useState(null);
     const [printerIP,setPrinterIP]=useState(()=>localStorage.getItem('ls_printer_ip')||'');
     const [bridgeUrl,setBridgeUrl]=useState(()=>localStorage.getItem('ls_bridge_url')||'');
@@ -754,6 +966,8 @@ const App = () => {
             {labelPreview&&(<LabelPreviewModal data={labelPreview} onClose={()=>setLabelPreview(null)} onBack={()=>{const r=rawData.find(r=>r[1]===labelPreview.sku);setNoticeRow(r);setLabelPreview(null);}}/>)}
             {stickerPromptRow&&!stickerPreview&&(<StickerQuantityModal row={stickerPromptRow} onClose={()=>setStickerPromptRow(null)} onProceed={(copies)=>{setStickerPreview({row:stickerPromptRow,copies});setStickerPromptRow(null);}}/>)}
             {stickerPreview&&(<StickerPreviewModal data={stickerPreview} onClose={()=>setStickerPreview(null)} printerConfig={{printerIP,bridgeUrl}}/>)}
+            {batchPrompt&&!batchPreview&&(<BatchQuantityModal rows={selectedRows} onClose={()=>setBatchPrompt(false)} onRemove={(row)=>{toggleRow(row);if(selectedRows.length<=1)setBatchPrompt(false);}} onProceed={(items)=>{setBatchPreview(items);setBatchPrompt(false);}}/>)}
+            {batchPreview&&(<BatchPreviewModal items={batchPreview} onClose={()=>{setBatchPreview(null);setSelectedRows([]);}} printerConfig={{printerIP,bridgeUrl}}/>)}
             {isLogoPrintOpen&&(<LogoPrintModal onClose={()=>setIsLogoPrintOpen(false)} printerConfig={{printerIP,bridgeUrl}}/>)}
             {isSettingsOpen&&(
                 <div className="settings-bg" onClick={()=>setIsSettingsOpen(false)}>
@@ -770,7 +984,7 @@ const App = () => {
                     </div>
                 </div>
             )}
-            <div className={`${labelPreview||stickerPreview?"print-hide":"no-print"}`} style={{maxWidth:"1200px",margin:"0 auto",padding:"20px 20px 60px",position:"relative",zIndex:1}}>
+            <div className={`${labelPreview||stickerPreview||batchPreview?"print-hide":"no-print"}`} style={{maxWidth:"1200px",margin:"0 auto",padding:"20px 20px 60px",position:"relative",zIndex:1}}>
                 <header className="glass-card anim-up card-hover" style={{marginBottom:"16px",padding:"20px 24px"}}>
                     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:"16px",flexWrap:"wrap"}}>
                         <div style={{display:"flex",alignItems:"center",gap:"16px"}}>
@@ -823,16 +1037,27 @@ const App = () => {
                     <div style={{overflowX:"auto",padding:"0 8px",perspective:"1200px"}}>
                         <table className="data-table" style={{tableLayout:"fixed",width:"100%"}}>
                             <thead><tr>
-                                <th style={{width:"22%",textAlign:"left",fontSize:"13px"}}>ลำดับ &amp; Barcode</th>
-                                <th style={{width:"30%",textAlign:"center",fontSize:"13px"}}>{labelH}</th>
-                                <th style={{width:"16%",textAlign:"center",fontSize:"13px"}}>{labelI}</th>
-                                <th style={{width:"14%",textAlign:"center",fontSize:"13px"}}>{labelJ}</th>
-                                <th style={{width:"9%",textAlign:"center",fontSize:"13px"}}>ใบแจ้ง</th>
-                                <th style={{width:"9%",textAlign:"center",fontSize:"13px"}}>พิมพ์</th>
+                                <th style={{width:"5%",textAlign:"center",fontSize:"13px"}}>
+                                    <input type="checkbox" title="เลือกทั้งหมดในหน้านี้" style={{width:"17px",height:"17px",accentColor:"var(--accent)",cursor:"pointer"}}
+                                        checked={filteredData.length>0&&filteredData.every(r=>selectedKeys.has(rowKeyOf(r)))}
+                                        onChange={e=>{
+                                            if(e.target.checked){setSelectedRows(prev=>{const seen=new Set(prev.map(rowKeyOf));return [...prev,...filteredData.filter(r=>!seen.has(rowKeyOf(r)))];});}
+                                            else{const fk=new Set(filteredData.map(rowKeyOf));setSelectedRows(prev=>prev.filter(r=>!fk.has(rowKeyOf(r))));}
+                                        }}/>
+                                </th>
+                                <th style={{width:"20%",textAlign:"left",fontSize:"13px"}}>ลำดับ &amp; Barcode</th>
+                                <th style={{width:"27%",textAlign:"center",fontSize:"13px"}}>{labelH}</th>
+                                <th style={{width:"15%",textAlign:"center",fontSize:"13px"}}>{labelI}</th>
+                                <th style={{width:"13%",textAlign:"center",fontSize:"13px"}}>{labelJ}</th>
+                                <th style={{width:"10%",textAlign:"center",fontSize:"13px"}}>ใบแจ้ง</th>
+                                <th style={{width:"10%",textAlign:"center",fontSize:"13px"}}>พิมพ์</th>
                             </tr></thead>
                             <tbody>
                                 {filteredData.map((row,idx)=>(
-                                    <tr key={idx} className="group tr-stagger" style={{animationDelay:`${Math.min(idx*28,400)}ms`}}>
+                                    <tr key={idx} className="group tr-stagger" style={{animationDelay:`${Math.min(idx*28,400)}ms`,background:selectedKeys.has(rowKeyOf(row))?"var(--accent-cont)":undefined}}>
+                                        <td style={{textAlign:"center",verticalAlign:"middle"}}>
+                                            <input type="checkbox" checked={selectedKeys.has(rowKeyOf(row))} onChange={()=>toggleRow(row)} style={{width:"17px",height:"17px",accentColor:"var(--accent)",cursor:"pointer"}}/>
+                                        </td>
                                         <td style={{verticalAlign:"middle"}}>
                                             <div className="column-a-container overflow-hidden">
                                                 <span className="column-a-text wrap-text" title={row[3]}>{row[0]||'---'}</span>
@@ -868,6 +1093,13 @@ const App = () => {
                 <footer style={{marginTop:"24px",padding:"14px",textAlign:"center",fontSize:"11px",color:"var(--t3)",fontWeight:500,fontFamily:"'Manrope',sans-serif",letterSpacing:".04em"}}>
                     © 2026 Lamsang Store · Print Barcode System
                 </footer>
+                {selectedRows.length>0&&!batchPrompt&&!batchPreview&&(
+                    <div className="anim-pop" style={{position:"fixed",left:"50%",bottom:"20px",transform:"translateX(-50%)",zIndex:200,display:"flex",alignItems:"center",gap:"12px",background:"#fff",border:"1px solid var(--border)",borderRadius:"var(--r-pill)",boxShadow:"var(--shadow-lg)",padding:"10px 12px 10px 18px",maxWidth:"calc(100vw - 32px)"}}>
+                        <span style={{fontSize:"14px",fontWeight:800,color:"var(--t1)",whiteSpace:"nowrap",fontFamily:"'Manrope',sans-serif"}}>เลือกแล้ว <span style={{color:"var(--accent)"}}>{selectedRows.length}</span> รายการ</span>
+                        <button onClick={()=>setSelectedRows([])} className="btn-ghost" style={{padding:"8px 14px",fontSize:"13px"}}>ล้าง</button>
+                        <button onClick={()=>setBatchPrompt(true)} className="btn-primary" style={{padding:"10px 20px",whiteSpace:"nowrap"}}>🖨️ พิมพ์ที่เลือก</button>
+                    </div>
+                )}
             </div>
         </div>
     );
