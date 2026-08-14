@@ -376,10 +376,9 @@ const stickerSheetCss=
     +'.c1{left:0;}'
     +'.c2{left:'+LABEL_PITCH_MM+'mm;}'
     +'.c3{left:'+(LABEL_PITCH_MM*2)+'mm;}'
-    /* guides sit in the middle of the liner gap, never on a sticker */
-    +'.cut{position:absolute;top:0;height:'+LABEL_H_MM+'mm;width:0;border-left:0.5px dashed #aaa;}'
-    +'.k1{left:'+(LABEL_W_MM+LABEL_GAP_MM/2)+'mm;}'
-    +'.k2{left:'+(LABEL_PITCH_MM+LABEL_W_MM+LABEL_GAP_MM/2)+'mm;}'
+    /* No cut guides. The stock is die-cut, so they mark nothing worth marking,
+       and any registration error between the printer and the die-cut puts them
+       on a sticker instead of on the liner they were aimed at. */
     +'.qr{position:absolute;top:'+LABEL_PAD_MM+'mm;left:'+QR_LEFT_MM+'mm;'
         +'width:'+QR_MM+'mm;height:'+QR_MM+'mm;image-rendering:pixelated;display:block;}'
     /* a caption strip is TEXT_COL wide and QR tall; the line inside is laid out
@@ -406,8 +405,7 @@ const stickerSheetHtml=({productName,variantName,sku})=>{
         +'<div class="side sl"><span class="nm">'+nm+'</span></div>'
         +'<img class="qr" src="'+escHtml(src)+'"/>'
         +'<div class="side sr"><span class="vn">'+vr+'</span></div></div>';
-    return '<div class="sheet"><div class="inner">'+cell(1)+cell(2)+cell(3)
-        +'<div class="cut k1"></div><div class="cut k2"></div></div></div>';
+    return '<div class="sheet"><div class="inner">'+cell(1)+cell(2)+cell(3)+'</div></div>';
 };
 /* On-screen preview of one sheet. Built from the same constants as the print
    CSS above so the two can't drift apart — SCALE is the only extra number. */

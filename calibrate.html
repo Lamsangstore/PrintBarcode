@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ปรับตำแหน่งพิมพ์ — Print Barcode</title>
+<style>
+  body{font-family:-apple-system,'Noto Sans Thai',sans-serif;background:#0f1e26;color:#e7f2ee;
+       margin:0;padding:32px 20px 64px;line-height:1.7;}
+  .wrap{max-width:640px;margin:0 auto;}
+  h1{font-size:22px;margin:0 0 4px;}
+  p{color:#a9c3bd;margin:0 0 14px;}
+  ol{color:#a9c3bd;padding-left:20px;}
+  li{margin-bottom:8px;}
+  code{background:rgba(255,255,255,.1);padding:2px 6px;border-radius:5px;color:#89f0cb;}
+  button{background:linear-gradient(135deg,#00684f,#00a372);color:#fff;border:0;border-radius:14px;
+         padding:16px 28px;font-size:17px;font-weight:800;cursor:pointer;width:100%;margin-top:18px;
+         font-family:inherit;}
+  button:active{transform:scale(.98);}
+  .note{background:rgba(137,240,203,.1);border:1px solid rgba(137,240,203,.25);border-radius:12px;
+        padding:14px 16px;margin-top:20px;font-size:14px;color:#cfe9e2;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>ปรับตำแหน่งพิมพ์สติ๊กเกอร์</h1>
+  <p>พิมพ์แผ่นทดสอบ 7 แผ่น แต่ละแผ่นเลื่อนงานทีละ 0.5 มม. เพื่อหาว่าค่าไหนตรงรอยปรุพอดี</p>
+  <ol>
+    <li>กดปุ่มข้างล่าง แล้วตั้งค่าหน้าต่างพิมพ์ให้เหมือนตอนพิมพ์สติ๊กเกอร์จริง<br>
+        (กระดาษ <code>100x25</code> · มาตราส่วน <code>100%</code> · ขอบ <code>ไม่มี</code> · ชุดสำเนา <code>1</code>)</li>
+    <li>ดูสติ๊กเกอร์ที่พิมพ์ออกมา หา <b>ดวงที่กรอบสี่เหลี่ยมอยู่ตรงกลางพอดี</b> — ขอบขาวรอบกรอบเท่ากันทั้ง 4 ด้าน</li>
+    <li>อ่านตัวเลขที่พิมพ์อยู่ในกรอบดวงนั้น เช่น <code>+0.5</code></li>
+    <li>เอาตัวเลขนั้นไปใส่ใน <code>index.html</code> บรรทัด <code>const SHEET_SHIFT_MM = 0;</code></li>
+  </ol>
+  <button onclick="printTest()">🖨️ พิมพ์แผ่นทดสอบ 7 แผ่น</button>
+  <div class="note">
+    กรอบสี่เหลี่ยมมีขนาด 30 × 23 มม. คือขนาดดวงสติ๊กเกอร์ (32 × 25) หักขอบด้านละ 1 มม. พอดี
+    ถ้าตำแหน่งพิมพ์ตรง จะเห็นขอบขาวเท่า ๆ กันด้านละ 1 มม. รอบกรอบ
+  </div>
+</div>
+
+<script>
+/* ต้องตรงกับค่าใน index.html */
+var LABEL_W_MM=32, LABEL_H_MM=25, LABEL_GAP_MM=2, LABEL_PAD_MM=1;
+var LABEL_PITCH_MM=LABEL_W_MM+LABEL_GAP_MM;
+var SHEET_W_MM=LABEL_W_MM*3+LABEL_GAP_MM*2;
+var BOX_W_MM=LABEL_W_MM-LABEL_PAD_MM*2, BOX_H_MM=LABEL_H_MM-LABEL_PAD_MM*2;
+var SHIFTS=[-1.5,-1,-0.5,0,0.5,1,1.5];
+
+function css(){
+  return '@page{size:'+SHEET_W_MM+'mm '+LABEL_H_MM+'mm;margin:0;}'
+    +'html,body{margin:0;padding:0;background:white;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+    +'body{font-family:Arial,Helvetica,sans-serif;}*{box-sizing:border-box;}'
+    +'.sheet{position:relative;width:'+SHEET_W_MM+'mm;height:'+LABEL_H_MM+'mm;overflow:hidden;'
+      +'background:white;page-break-after:always;break-after:page;}'
+    +'.sheet:last-child{page-break-after:auto;break-after:auto;}'
+    +'.inner{position:absolute;top:0;width:'+SHEET_W_MM+'mm;height:'+LABEL_H_MM+'mm;}'
+    +'.cell{position:absolute;top:0;width:'+LABEL_W_MM+'mm;height:'+LABEL_H_MM+'mm;}'
+    +'.box{position:absolute;top:'+LABEL_PAD_MM+'mm;left:'+LABEL_PAD_MM+'mm;'
+      +'width:'+BOX_W_MM+'mm;height:'+BOX_H_MM+'mm;border:0.4mm solid #000;}'
+    /* the value reads horizontally once the printer lays the label down */
+    +'.tag{position:absolute;top:50%;left:50%;width:'+BOX_H_MM+'mm;height:6mm;'
+      +'margin-top:-3mm;margin-left:'+(-BOX_H_MM/2)+'mm;transform:rotate(-90deg);'
+      +'line-height:6mm;text-align:center;font-size:14pt;font-weight:900;color:#000;}';
+}
+
+function sheet(shift){
+  var cells='';
+  for(var i=0;i<3;i++){
+    cells+='<div class="cell" style="left:'+(LABEL_PITCH_MM*i)+'mm">'
+         + '<div class="box"></div>'
+         + '<div class="tag">'+(shift>0?'+':'')+shift.toFixed(1)+'</div></div>';
+  }
+  return '<div class="sheet"><div class="inner" style="left:'+shift+'mm">'+cells+'</div></div>';
+}
+
+function printTest(){
+  var pages=SHIFTS.map(sheet).join('');
+  var old=document.getElementById('cal-frame'); if(old)old.parentNode.removeChild(old);
+  var f=document.createElement('iframe'); f.id='cal-frame';
+  f.style.cssText='position:fixed;left:-9999px;top:0;width:'+SHEET_W_MM+'mm;height:'+LABEL_H_MM+'mm;border:none;';
+  document.body.appendChild(f);
+  var d=f.contentDocument||f.contentWindow.document;
+  d.open();
+  d.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'+css()+'</style></head><body>'+pages+'</bo'+'dy></html>');
+  d.close();
+  setTimeout(function(){
+    f.contentWindow.focus();
+    try{f.contentWindow.print();}catch(e){window.print();}
+    setTimeout(function(){var x=document.getElementById('cal-frame');if(x)x.parentNode.removeChild(x);},5000);
+  },400);
+}
+</script>
+</body>
+</html>
