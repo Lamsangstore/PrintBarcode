@@ -21,6 +21,12 @@
        background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
        border-radius:12px;padding:12px 16px;}
   .row label{font-size:15px;font-weight:700;}
+  .axes{display:flex;gap:8px;}
+  .pick{display:flex;align-items:center;gap:6px;font-size:15px;font-weight:700;
+        background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.14);
+        border-radius:9px;padding:8px 12px;cursor:pointer;}
+  .pick:has(input:checked){background:rgba(0,163,114,.28);border-color:#00a372;}
+  .pick input{accent-color:#00a372;}
   input{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.18);border-radius:9px;
         color:#e7f2ee;font-size:18px;font-weight:800;padding:8px 10px;width:96px;text-align:center;
         font-family:inherit;}
@@ -35,15 +41,23 @@
   <ol>
     <li>กดปุ่มข้างล่าง แล้วตั้งค่าหน้าต่างพิมพ์ให้เหมือนตอนพิมพ์สติ๊กเกอร์จริง<br>
         (กระดาษ <code>100x25</code> · มาตราส่วน <code>100%</code> · ขอบ <code>ไม่มี</code> · ชุดสำเนา <code>1</code>)</li>
-    <li>ดูสติ๊กเกอร์ที่พิมพ์ออกมา หา <b>ดวงที่กรอบสี่เหลี่ยมอยู่ตรงกลางพอดี</b> — ขอบขาวรอบกรอบเท่ากันทั้ง 4 ด้าน</li>
-    <li>อ่านตัวเลขที่พิมพ์อยู่ในกรอบดวงนั้น เช่น <code>+0.5</code></li>
-    <li>เอาตัวเลขนั้นไปใส่ใน <code>index.html</code> บรรทัด <code>const SHEET_SHIFT_MM = 0;</code></li>
+    <li>ดูสติ๊กเกอร์ที่พิมพ์ออกมา หา <b>แถวที่กรอบสี่เหลี่ยมอยู่ตรงกลางพอดี</b> — ขอบขาวเท่ากันทั้ง 2 ด้านของแกนที่กำลังปรับ</li>
+    <li>อ่านตัวเลขที่พิมพ์อยู่ในกรอบแถวนั้น เช่น <code>+2.0</code></li>
+    <li>เอาตัวเลขนั้นไปใส่ใน <code>index.html</code> ที่ค่าคงที่ของแกนนั้น</li>
+    <li>ปรับทีละแกน — แกน ↔ ก่อน แล้วค่อยกลับมาปรับแกน ↕</li>
   </ol>
+  <div class="row">
+    <label>แกนที่จะปรับ</label>
+    <div class="axes">
+      <label class="pick"><input type="radio" name="axis" value="x" checked onchange="syncAxis()"> ↔ ซ้าย-ขวา</label>
+      <label class="pick"><input type="radio" name="axis" value="y" onchange="syncAxis()"> ↕ บน-ล่าง</label>
+    </div>
+  </div>
   <div class="row">
     <label for="center">ค่าที่ใช้อยู่ตอนนี้ (มม.)</label>
     <input id="center" type="number" step="0.5" value="1.5">
   </div>
-  <p style="font-size:14px;margin-top:-4px">จะพิมพ์ทดสอบ 7 ค่ารอบ ๆ ตัวเลขนี้ ทีละ 0.5 มม. — ใส่ให้ตรงกับ <code>SHEET_SHIFT_MM</code> ใน <code>index.html</code></p>
+  <p style="font-size:14px;margin-top:-4px">จะพิมพ์ทดสอบ 7 ค่ารอบ ๆ ตัวเลขนี้ ทีละ 0.5 มม. — ใส่ให้ตรงกับ <code id="which">SHEET_SHIFT_MM</code> ใน <code>index.html</code></p>
   <button onclick="printTest()">🖨️ พิมพ์แผ่นทดสอบ 7 แผ่น</button>
   <div class="note">
     กรอบสี่เหลี่ยมมีขนาด 30 × 23 มม. คือขนาดดวงสติ๊กเกอร์ (32 × 25) หักขอบด้านละ 1 มม. พอดี
@@ -83,6 +97,16 @@ function css(){
       +'line-height:6mm;text-align:center;font-size:14pt;font-weight:900;color:#000;}';
 }
 
+function axis(){ return document.querySelector('input[name=axis]:checked').value; }
+
+/* each axis has its own constant and its own current value */
+var CURRENT={x:1.5,y:0};
+function syncAxis(){
+  var a=axis();
+  document.getElementById('center').value=CURRENT[a];
+  document.getElementById('which').textContent=a==='y'?'SHEET_SHIFT_Y_MM':'SHEET_SHIFT_MM';
+}
+
 function sheet(shift){
   var cells='';
   for(var i=0;i<3;i++){
@@ -90,7 +114,8 @@ function sheet(shift){
          + '<div class="box"></div>'
          + '<div class="tag">'+(shift>0?'+':'')+shift.toFixed(1)+'</div></div>';
   }
-  return '<div class="sheet"><div class="inner" style="left:'+shift+'mm">'+cells+'</div></div>';
+  var pos=axis()==='y' ? 'top:'+shift+'mm' : 'left:'+shift+'mm';
+  return '<div class="sheet"><div class="inner" style="'+pos+'">'+cells+'</div></div>';
 }
 
 function printTest(){

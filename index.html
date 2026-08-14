@@ -337,9 +337,12 @@ const { useState, useEffect, useMemo, useRef } = React;
 const LABEL_W_MM = 32;      // width of one die-cut sticker
 const LABEL_H_MM = 25;      // height of one die-cut sticker
 const LABEL_GAP_MM = 2;     // liner gap between stickers
-/* Measured on the shop's printer with calibrate.html: the sheet starts about
-   1.5mm short of the die-cut, so the artwork is pushed back by that much. */
+/* Registration between the printer and the die-cut, measured with
+   calibrate.html. X runs across the three labels, Y along the direction the
+   media feeds — two independent errors, so two knobs. Positive X moves the
+   artwork towards the third label, positive Y moves it further down the feed. */
 const SHEET_SHIFT_MM = 1.5;
+const SHEET_SHIFT_Y_MM = 0;
 const LABEL_PITCH_MM = LABEL_W_MM + LABEL_GAP_MM;                 // 34
 /* The roll repeats every 34mm, so three labels really occupy 102mm of web —
    there is a gap after the third one too, not only between them. A 100mm page
@@ -381,7 +384,8 @@ const stickerSheetCss=
     +'*{box-sizing:border-box;}'
     +'.sheet{position:relative;width:'+SHEET_W_MM+'mm;height:'+LABEL_H_MM+'mm;overflow:hidden;background:white;page-break-after:always;break-after:page;}'
     +'.sheet:last-child{page-break-after:auto;break-after:auto;}'
-    +'.inner{position:absolute;top:0;left:'+SHEET_SHIFT_MM+'mm;width:'+SHEET_W_MM+'mm;height:'+LABEL_H_MM+'mm;}'
+    +'.inner{position:absolute;top:'+SHEET_SHIFT_Y_MM+'mm;left:'+SHEET_SHIFT_MM+'mm;'
+        +'width:'+SHEET_W_MM+'mm;height:'+LABEL_H_MM+'mm;}'
     +'.cell{position:absolute;top:0;height:'+LABEL_H_MM+'mm;width:'+LABEL_W_MM+'mm;overflow:hidden;}'
     +'.c1{left:0;}'
     +'.c2{left:'+LABEL_PITCH_MM+'mm;}'
