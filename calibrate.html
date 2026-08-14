@@ -17,6 +17,13 @@
          padding:16px 28px;font-size:17px;font-weight:800;cursor:pointer;width:100%;margin-top:18px;
          font-family:inherit;}
   button:active{transform:scale(.98);}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:20px;
+       background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+       border-radius:12px;padding:12px 16px;}
+  .row label{font-size:15px;font-weight:700;}
+  input{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.18);border-radius:9px;
+        color:#e7f2ee;font-size:18px;font-weight:800;padding:8px 10px;width:96px;text-align:center;
+        font-family:inherit;}
   .note{background:rgba(137,240,203,.1);border:1px solid rgba(137,240,203,.25);border-radius:12px;
         padding:14px 16px;margin-top:20px;font-size:14px;color:#cfe9e2;}
 </style>
@@ -32,6 +39,11 @@
     <li>อ่านตัวเลขที่พิมพ์อยู่ในกรอบดวงนั้น เช่น <code>+0.5</code></li>
     <li>เอาตัวเลขนั้นไปใส่ใน <code>index.html</code> บรรทัด <code>const SHEET_SHIFT_MM = 0;</code></li>
   </ol>
+  <div class="row">
+    <label for="center">ค่าที่ใช้อยู่ตอนนี้ (มม.)</label>
+    <input id="center" type="number" step="0.5" value="1.5">
+  </div>
+  <p style="font-size:14px;margin-top:-4px">จะพิมพ์ทดสอบ 7 ค่ารอบ ๆ ตัวเลขนี้ ทีละ 0.5 มม. — ใส่ให้ตรงกับ <code>SHEET_SHIFT_MM</code> ใน <code>index.html</code></p>
   <button onclick="printTest()">🖨️ พิมพ์แผ่นทดสอบ 7 แผ่น</button>
   <div class="note">
     กรอบสี่เหลี่ยมมีขนาด 30 × 23 มม. คือขนาดดวงสติ๊กเกอร์ (32 × 25) หักขอบด้านละ 1 มม. พอดี
@@ -43,9 +55,16 @@
 /* ต้องตรงกับค่าใน index.html */
 var LABEL_W_MM=32, LABEL_H_MM=25, LABEL_GAP_MM=2, LABEL_PAD_MM=1;
 var LABEL_PITCH_MM=LABEL_W_MM+LABEL_GAP_MM;
-var SHEET_W_MM=LABEL_W_MM*3+LABEL_GAP_MM*2;
+var SHEET_TRAILING_GAP=false;   /* ต้องตรงกับ index.html และขนาดกระดาษในไดรเวอร์ */
+var SHEET_W_MM=LABEL_W_MM*3+LABEL_GAP_MM*(SHEET_TRAILING_GAP?3:2);
 var BOX_W_MM=LABEL_W_MM-LABEL_PAD_MM*2, BOX_H_MM=LABEL_H_MM-LABEL_PAD_MM*2;
-var SHIFTS=[-1.5,-1,-0.5,0,0.5,1,1.5];
+/* Seven sheets stepping 0.5mm, centred on whatever is in the box. Start from
+   the value already in index.html so a second pass explores past the edge of
+   the first one instead of reprinting the same seven offsets. */
+function shifts(){
+  var c=parseFloat(document.getElementById('center').value)||0;
+  return [-1.5,-1,-0.5,0,0.5,1,1.5].map(function(d){return Math.round((c+d)*10)/10;});
+}
 
 function css(){
   return '@page{size:'+SHEET_W_MM+'mm '+LABEL_H_MM+'mm;margin:0;}'
@@ -75,7 +94,7 @@ function sheet(shift){
 }
 
 function printTest(){
-  var pages=SHIFTS.map(sheet).join('');
+  var pages=shifts().map(sheet).join('');
   var old=document.getElementById('cal-frame'); if(old)old.parentNode.removeChild(old);
   var f=document.createElement('iframe'); f.id='cal-frame';
   f.style.cssText='position:fixed;left:-9999px;top:0;width:'+SHEET_W_MM+'mm;height:'+LABEL_H_MM+'mm;border:none;';
