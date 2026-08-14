@@ -342,7 +342,7 @@ const LABEL_GAP_MM = 2;     // liner gap between stickers
    media feeds — two independent errors, so two knobs. Positive X moves the
    artwork towards the third label, positive Y moves it further down the feed. */
 const SHEET_SHIFT_MM = 1.5;
-const SHEET_SHIFT_Y_MM = 0;
+const SHEET_SHIFT_Y_MM = 1;
 const LABEL_PITCH_MM = LABEL_W_MM + LABEL_GAP_MM;                 // 34
 /* The roll repeats every 34mm, so three labels really occupy 102mm of web —
    there is a gap after the third one too, not only between them. A 100mm page
@@ -355,14 +355,17 @@ const SHEET_TRAILING_GAP = false;
 const SHEET_W_MM = LABEL_W_MM * 3 + LABEL_GAP_MM * (SHEET_TRAILING_GAP ? 3 : 2);
 const ZPL_DPMM = 300 / 25.4;   // 300dpi print head, for the direct-ZPL path
 const ZPL_QR_DOTS = 222;       // rendered width of ^BQN,2,8, used to centre it
-/* Inside one label: 1mm of quiet edge all round, then the QR takes every
-   millimetre the 25mm label height allows (25 - 1 - 1 = 23mm) and the two
-   captions run vertically down the strips left over on either side. Stacking
-   the captions horizontally the way the old layout did capped the QR at 15mm;
-   turning them sideways costs the QR nothing, because its height — not the
-   32mm width — is what limits it. The QR ends up centred on the label, which
-   also leaves it the most room to absorb any print drift. */
-const LABEL_PAD_MM = 1;     // quiet edge the artwork never crosses
+/* Inside one label: a quiet edge all round, then the QR takes every millimetre
+   the 25mm label height allows (25 - 2 - 2 = 21mm) and the two captions run
+   vertically down the strips left over on either side. Stacking the captions
+   horizontally the way the old layout did capped the QR at 15mm; turning them
+   sideways costs the QR nothing, because its height — not the 32mm width — is
+   what limits it. The QR ends up centred on the label, which also leaves it
+   the most room to absorb any print drift.
+   The 2mm edge is what keeps the third label whole: at 1mm its caption strip
+   reached 100.5mm, half a millimetre past a 100mm page, and the shift needed
+   for this printer pushed the tail of it off the edge. */
+const LABEL_PAD_MM = 2;     // quiet edge the artwork never crosses
 const QR_GAP_MM = 0.7;      // white lane between the QR and each caption
 /* A rotated line of text does not sit in the middle of its own line box — the
    ascender space above the glyphs is bigger than the descender space below it,
@@ -372,10 +375,10 @@ const CAPTION_OPT_MM = 0.5;
 const CAPTION_NAME_PT = 6;
 const CAPTION_VAR_PT = 5.5;
 const PT_MM = 25.4 / 72;
-const QR_MM = LABEL_H_MM - LABEL_PAD_MM * 2;                                  // 23
+const QR_MM = LABEL_H_MM - LABEL_PAD_MM * 2;                                  // 21
 const TEXT_COL_MM = (LABEL_W_MM - LABEL_PAD_MM * 2 - QR_MM - QR_GAP_MM * 2) / 2;  // 2.8
-const QR_LEFT_MM = LABEL_PAD_MM + TEXT_COL_MM + QR_GAP_MM;                    // 4.5
-const TEXT_R_LEFT_MM = QR_LEFT_MM + QR_MM + QR_GAP_MM;                        // 28.2
+const QR_LEFT_MM = LABEL_PAD_MM + TEXT_COL_MM + QR_GAP_MM;                    // 5.5
+const TEXT_R_LEFT_MM = QR_LEFT_MM + QR_MM + QR_GAP_MM;                        // 27.2
 const escHtml=(s)=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const stickerSheetCss=
      '@page{size:'+SHEET_W_MM+'mm '+LABEL_H_MM+'mm;margin:0;}'

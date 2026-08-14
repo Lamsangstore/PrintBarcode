@@ -60,14 +60,14 @@
   <p style="font-size:14px;margin-top:-4px">จะพิมพ์ทดสอบ 7 ค่ารอบ ๆ ตัวเลขนี้ ทีละ 0.5 มม. — ใส่ให้ตรงกับ <code id="which">SHEET_SHIFT_MM</code> ใน <code>index.html</code></p>
   <button onclick="printTest()">🖨️ พิมพ์แผ่นทดสอบ 7 แผ่น</button>
   <div class="note">
-    กรอบสี่เหลี่ยมมีขนาด 30 × 23 มม. คือขนาดดวงสติ๊กเกอร์ (32 × 25) หักขอบด้านละ 1 มม. พอดี
-    ถ้าตำแหน่งพิมพ์ตรง จะเห็นขอบขาวเท่า ๆ กันด้านละ 1 มม. รอบกรอบ
+    กรอบสี่เหลี่ยมมีขนาด 28 × 21 มม. คือขนาดดวงสติ๊กเกอร์ (32 × 25) หักขอบด้านละ 2 มม. พอดี
+    ถ้าตำแหน่งพิมพ์ตรง จะเห็นขอบขาวเท่า ๆ กันด้านละ 2 มม. รอบกรอบ
   </div>
 </div>
 
 <script>
 /* ต้องตรงกับค่าใน index.html */
-var LABEL_W_MM=32, LABEL_H_MM=25, LABEL_GAP_MM=2, LABEL_PAD_MM=1;
+var LABEL_W_MM=32, LABEL_H_MM=25, LABEL_GAP_MM=2, LABEL_PAD_MM=2;
 var LABEL_PITCH_MM=LABEL_W_MM+LABEL_GAP_MM;
 var SHEET_TRAILING_GAP=false;   /* ต้องตรงกับ index.html และขนาดกระดาษในไดรเวอร์ */
 var SHEET_W_MM=LABEL_W_MM*3+LABEL_GAP_MM*(SHEET_TRAILING_GAP?3:2);
@@ -100,7 +100,7 @@ function css(){
 function axis(){ return document.querySelector('input[name=axis]:checked').value; }
 
 /* each axis has its own constant and its own current value */
-var CURRENT={x:1.5,y:0};
+var CURRENT={x:1.5,y:1};
 function syncAxis(){
   var a=axis();
   document.getElementById('center').value=CURRENT[a];
