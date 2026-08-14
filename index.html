@@ -341,7 +341,27 @@ const SHEET_SHIFT_MM = 0;
 const LABEL_PITCH_MM = LABEL_W_MM + LABEL_GAP_MM;                 // 34
 const SHEET_W_MM = LABEL_W_MM * 3 + LABEL_GAP_MM * 2;             // 100
 const ZPL_DPMM = 300 / 25.4;   // 300dpi print head, for the direct-ZPL path
-const ZPL_QR_DOTS = 222;       // rendered width of ^BQN,2,8, used to centre it
+/* Inside one label: 1mm of quiet edge all round, then the QR takes every
+   millimetre the 25mm label height allows (25 - 1 - 1 = 23mm) and the two
+   captions run vertically down the strips left over on either side. Stacking
+   the captions horizontally the way the old layout did capped the QR at 15mm;
+   turning them sideways costs the QR nothing, because its height — not the
+   32mm width — is what limits it. The QR ends up centred on the label, which
+   also leaves it the most room to absorb any print drift. */
+const LABEL_PAD_MM = 1;     // quiet edge the artwork never crosses
+const QR_GAP_MM = 0.7;      // white lane between the QR and each caption
+/* A rotated line of text does not sit in the middle of its own line box — the
+   ascender space above the glyphs is bigger than the descender space below it,
+   and once the line is turned on its side that lands as a lean towards the QR.
+   Measured at ~0.5mm for this font, so the captions are pushed back by that. */
+const CAPTION_OPT_MM = 0.5;
+const CAPTION_NAME_PT = 6;
+const CAPTION_VAR_PT = 5.5;
+const PT_MM = 25.4 / 72;
+const QR_MM = LABEL_H_MM - LABEL_PAD_MM * 2;                                  // 23
+const TEXT_COL_MM = (LABEL_W_MM - LABEL_PAD_MM * 2 - QR_MM - QR_GAP_MM * 2) / 2;  // 2.8
+const QR_LEFT_MM = LABEL_PAD_MM + TEXT_COL_MM + QR_GAP_MM;                    // 4.5
+const TEXT_R_LEFT_MM = QR_LEFT_MM + QR_MM + QR_GAP_MM;                        // 28.2
 const escHtml=(s)=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const stickerSheetCss=
      '@page{size:'+SHEET_W_MM+'mm '+LABEL_H_MM+'mm;margin:0;}'
@@ -351,8 +371,7 @@ const stickerSheetCss=
     +'.sheet{position:relative;width:'+SHEET_W_MM+'mm;height:'+LABEL_H_MM+'mm;overflow:hidden;background:white;page-break-after:always;break-after:page;}'
     +'.sheet:last-child{page-break-after:auto;break-after:auto;}'
     +'.inner{position:absolute;top:0;left:'+SHEET_SHIFT_MM+'mm;width:'+SHEET_W_MM+'mm;height:'+LABEL_H_MM+'mm;}'
-    +'.cell{position:absolute;top:0;height:'+LABEL_H_MM+'mm;width:'+LABEL_W_MM+'mm;padding:0.6mm 0.8mm 1.6mm;overflow:hidden;'
-        +'display:flex;flex-direction:column;align-items:center;justify-content:space-between;}'
+    +'.cell{position:absolute;top:0;height:'+LABEL_H_MM+'mm;width:'+LABEL_W_MM+'mm;overflow:hidden;}'
     +'.c1{left:0;}'
     +'.c2{left:'+LABEL_PITCH_MM+'mm;}'
     +'.c3{left:'+(LABEL_PITCH_MM*2)+'mm;}'
@@ -360,18 +379,67 @@ const stickerSheetCss=
     +'.cut{position:absolute;top:0;height:'+LABEL_H_MM+'mm;width:0;border-left:0.5px dashed #aaa;}'
     +'.k1{left:'+(LABEL_W_MM+LABEL_GAP_MM/2)+'mm;}'
     +'.k2{left:'+(LABEL_PITCH_MM+LABEL_W_MM+LABEL_GAP_MM/2)+'mm;}'
-    +'.nm{font-size:6.5pt;font-weight:900;width:100%;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;color:#000;}'
-    +'.vr{font-size:5.5pt;font-weight:700;width:100%;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;color:#000;}'
-    +'.qr{width:15mm;height:15mm;image-rendering:pixelated;display:block;}';
+    +'.qr{position:absolute;top:'+LABEL_PAD_MM+'mm;left:'+QR_LEFT_MM+'mm;'
+        +'width:'+QR_MM+'mm;height:'+QR_MM+'mm;image-rendering:pixelated;display:block;}'
+    /* a caption strip is TEXT_COL wide and QR tall; the line inside is laid out
+       flat at those dimensions swapped, then rotated about its own centre, so
+       nothing depends on how the print engine measures rotated text */
+    /* no overflow:hidden here — the strip only positions; the span below is what
+       bounds the text, so the optical nudge can never clip a glyph */
+    +'.side{position:absolute;top:'+LABEL_PAD_MM+'mm;width:'+TEXT_COL_MM+'mm;height:'+QR_MM+'mm;}'
+    +'.sl{left:'+LABEL_PAD_MM+'mm;}'
+    +'.sr{left:'+TEXT_R_LEFT_MM+'mm;}'
+    +'.side>span{position:absolute;top:50%;left:50%;width:'+QR_MM+'mm;height:'+TEXT_COL_MM+'mm;'
+        +'margin-top:'+(-TEXT_COL_MM/2)+'mm;margin-left:'+(-QR_MM/2)+'mm;'
+        +'transform:translateX('+CAPTION_OPT_MM+'mm) rotate(-90deg);'
+        +'display:block;line-height:'+TEXT_COL_MM+'mm;text-align:center;white-space:nowrap;'
+        +'overflow:hidden;text-overflow:ellipsis;color:#000;}'
+    +'.nm{font-size:'+CAPTION_NAME_PT+'pt;font-weight:900;}'
+    +'.vn{font-size:'+CAPTION_VAR_PT+'pt;font-weight:700;}';
 const stickerSheetHtml=({productName,variantName,sku})=>{
-    const src='https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(String(sku||''));
-    const nm=escHtml(String(productName||'').substring(0,28));
-    const vr=escHtml(String(variantName||'').substring(0,28));
-    const cell=(i)=>'<div class="cell c'+i+'"><div class="nm">'+nm+'</div>'
+    const px=Math.round(QR_MM*ZPL_DPMM);   // ask the QR service for print-resolution pixels
+    const src='https://api.qrserver.com/v1/create-qr-code/?size='+px+'x'+px+'&data='+encodeURIComponent(String(sku||''));
+    const nm=escHtml(String(productName||'').substring(0,32));
+    const vr=escHtml(String(variantName||'').substring(0,32));
+    const cell=(i)=>'<div class="cell c'+i+'">'
+        +'<div class="side sl"><span class="nm">'+nm+'</span></div>'
         +'<img class="qr" src="'+escHtml(src)+'"/>'
-        +'<div class="vr">'+vr+'</div></div>';
+        +'<div class="side sr"><span class="vn">'+vr+'</span></div></div>';
     return '<div class="sheet"><div class="inner">'+cell(1)+cell(2)+cell(3)
         +'<div class="cut k1"></div><div class="cut k2"></div></div></div>';
+};
+/* On-screen preview of one sheet. Built from the same constants as the print
+   CSS above so the two can't drift apart — SCALE is the only extra number. */
+const StickerSheetPreview = ({ productName, variantName, sku, scale = 3 }) => {
+    const u = (mm) => (mm * scale) + 'px';
+    const qrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=' + encodeURIComponent(String(sku || ''));
+    const caption = (text, left, pt, weight) => (
+        <div style={{position:'absolute',top:u(LABEL_PAD_MM),left:u(left),width:u(TEXT_COL_MM),height:u(QR_MM)}}>
+            <span style={{position:'absolute',top:'50%',left:'50%',width:u(QR_MM),height:u(TEXT_COL_MM),
+                marginTop:u(-TEXT_COL_MM/2),marginLeft:u(-QR_MM/2),
+                transform:'translateX('+u(CAPTION_OPT_MM)+') rotate(-90deg)',
+                display:'block',lineHeight:u(TEXT_COL_MM),fontSize:u(pt*PT_MM),fontWeight:weight,
+                textAlign:'center',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',color:'#000'}}>{text}</span>
+        </div>
+    );
+    return (
+        <div style={{position:'relative',width:u(SHEET_W_MM),height:u(LABEL_H_MM),background:'#e7e8e6',
+            borderRadius:'10px',overflow:'hidden',boxShadow:'0 4px 24px rgba(0,0,0,.4)',
+            fontFamily:"'Noto Sans Thai',sans-serif",animation:'float 4s ease-in-out infinite'}}>
+            {[0,1,2].map(n=>(
+                <div key={n} style={{position:'absolute',top:0,left:u(LABEL_PITCH_MM*n),
+                    width:u(LABEL_W_MM),height:u(LABEL_H_MM),background:'white',overflow:'hidden'}}>
+                    {caption(productName,LABEL_PAD_MM,CAPTION_NAME_PT,900)}
+                    <div className="qr-wrapper" style={{position:'absolute',top:u(LABEL_PAD_MM),left:u(QR_LEFT_MM),
+                        width:u(QR_MM),height:u(QR_MM)}}>
+                        <img src={qrSrc} alt="QR" style={{width:'100%',height:'100%',display:'block',imageRendering:'pixelated'}}/>
+                        <div className="scan-line"/>
+                    </div>
+                    {caption(variantName,TEXT_R_LEFT_MM,CAPTION_VAR_PT,700)}
+                </div>
+            ))}
+        </div>
+    );
 };
 const stickerPrintDoc=(pages)=>'<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'
     +stickerSheetCss+'</style></head><body>'+pages+'</bo'+'dy></html>';
@@ -531,9 +599,7 @@ const StickerPreviewModal = ({ data, onClose, printerConfig }) => {
                     <div style={{background:'rgba(255,255,255,.08)',backdropFilter:'blur(20px)',borderRadius:'20px',padding:'16px',border:'1px solid rgba(255,255,255,.12)',boxShadow:'0 8px 32px rgba(0,0,0,.3)'}}>
                         <p style={{color:'rgba(255,255,255,.4)',fontSize:'10px',fontWeight:700,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:'10px',textAlign:'center',fontFamily:"'Manrope',sans-serif"}}>Preview</p>
                         <div className="flex justify-center">
-                            <div style={{background:'white',width:'300px',height:'75px',display:'flex',borderRadius:'10px',overflow:'hidden',boxShadow:'0 4px 24px rgba(0,0,0,.4)',fontFamily:"'Noto Sans Thai',sans-serif",animation:'float 4s ease-in-out infinite'}}>
-                                {[1,2,3].map(n=>(<div key={n} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'space-between',padding:'2px 2px 5px',borderRight:n<3?'1px dashed #ddd':'none',overflow:'hidden'}}><div style={{fontSize:'5.5pt',fontWeight:900,width:'100%',textAlign:'center',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',lineHeight:1.4,color:'black'}}>{productName}</div><div className="qr-wrapper"><img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(sku)}`} alt="QR" style={{width:'45px',height:'45px',imageRendering:'pixelated'}}/><div className="scan-line"/></div><div style={{fontSize:'4.5pt',fontWeight:700,width:'100%',textAlign:'center',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',lineHeight:1.4,color:'black'}}>{variantName}</div></div>))}
-                            </div>
+                            <StickerSheetPreview productName={productName} variantName={variantName} sku={sku}/>
                         </div>
                         <div style={{textAlign:'center',marginTop:'10px'}}><span style={{background:'rgba(137,240,203,.2)',color:'#89f0cb',padding:'3px 10px',borderRadius:'99px',fontSize:'11px',fontWeight:700,border:'1px solid rgba(137,240,203,.3)',animation:'badgePop .5s .3s cubic-bezier(.34,1.56,.64,1) both'}}>SKU: {sku}</span></div>
                     </div>
