@@ -323,6 +323,48 @@ body{font-family:'Noto Sans Thai','Plus Jakarta Sans',sans-serif;background:var(
 <div id="root"></div>
 <script type="text/babel">
 const { useState, useEffect, useMemo, useRef } = React;
+/* ===== 3-up QR sticker sheet: 100mm x 25mm = three die-cut labels =====
+   Two things used to push each QR off the middle of its label:
+   1. flex:1 let the browser split the row itself, and the 0.5px dashed dividers
+      (rounded up to a whole device pixel by the print engine) were taken out of
+      that split, so cell 1/2 ended up wider than cell 3. The cells are now
+      absolutely positioned, and the dividers are overlays with no layout width.
+   2. the row was pinned to a hard 100mm. If the printer driver's page is not
+      exactly 100mm (a 4in roll is 101.6mm) the artwork no longer lines up with
+      the die-cut, and the error grows label by label — the 3rd one drifts most.
+      Columns are now thirds of the real page width, so they follow the paper.
+   SHEET_SHIFT_MM nudges the whole artwork sideways when the roll itself prints
+   off-register (positive = move right, e.g. 0.5 or -0.5). */
+const SHEET_SHIFT_MM = 0;
+const escHtml=(s)=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const stickerSheetCss=
+     '@page{size:100mm 25mm;margin:0;}'
+    +'html,body{margin:0;padding:0;background:white;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}'
+    +'body{font-family:Arial,Helvetica,sans-serif;}'
+    +'*{box-sizing:border-box;}'
+    +'.sheet{position:relative;width:100%;height:25mm;overflow:hidden;background:white;page-break-after:always;break-after:page;}'
+    +'.sheet:last-child{page-break-after:auto;break-after:auto;}'
+    +'.inner{position:absolute;top:0;left:'+SHEET_SHIFT_MM+'mm;width:100%;height:25mm;}'
+    +'.cell{position:absolute;top:0;height:25mm;width:33.3333%;padding:0.6mm 0.8mm 1.6mm;overflow:hidden;'
+        +'display:flex;flex-direction:column;align-items:center;justify-content:space-between;}'
+    +'.c1{left:0;}.c2{left:33.3333%;}.c3{left:66.6667%;}'
+    +'.cut{position:absolute;top:0;height:25mm;width:0;border-left:0.5px dashed #aaa;}'
+    +'.k1{left:33.3333%;}.k2{left:66.6667%;}'
+    +'.nm{font-size:6.5pt;font-weight:900;width:100%;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;color:#000;}'
+    +'.vr{font-size:5.5pt;font-weight:700;width:100%;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;color:#000;}'
+    +'.qr{width:15mm;height:15mm;image-rendering:pixelated;display:block;}';
+const stickerSheetHtml=({productName,variantName,sku})=>{
+    const src='https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(String(sku||''));
+    const nm=escHtml(String(productName||'').substring(0,28));
+    const vr=escHtml(String(variantName||'').substring(0,28));
+    const cell=(i)=>'<div class="cell c'+i+'"><div class="nm">'+nm+'</div>'
+        +'<img class="qr" src="'+escHtml(src)+'"/>'
+        +'<div class="vr">'+vr+'</div></div>';
+    return '<div class="sheet"><div class="inner">'+cell(1)+cell(2)+cell(3)
+        +'<div class="cut k1"></div><div class="cut k2"></div></div></div>';
+};
+const stickerPrintDoc=(pages)=>'<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'
+    +stickerSheetCss+'</style></head><body>'+pages+'</bo'+'dy></html>';
 
 const SearchableSelect = ({ id, label, options, value, onChange, placeholder }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -463,7 +505,7 @@ const StickerPreviewModal = ({ data, onClose, printerConfig }) => {
     const addRipple=(e)=>{const b=e.currentTarget.getBoundingClientRect();const id=Date.now();setRipples(r=>[...r,{id,x:e.clientX-b.left,y:e.clientY-b.top}]);setTimeout(()=>setRipples(r=>r.filter(rp=>rp.id!==id)),700);};
     const tryWsBridge=()=>new Promise((res,rej)=>{if(!bridgeUrl){rej(new Error('no_bridge'));return;}const url=bridgeUrl.startsWith('ws')?bridgeUrl:`ws://${bridgeUrl}`;let ws,done=false;try{ws=new WebSocket(url);}catch(e){rej(e);return;}const t=setTimeout(()=>{done=true;try{ws.close()}catch{};rej(new Error('timeout'));},5000);ws.onopen=()=>ws.send(JSON.stringify({action:'print',productName,variantName,sku,copies}));ws.onmessage=e=>{if(done)return;done=true;clearTimeout(t);let r;try{r=JSON.parse(e.data);}catch{r={};}ws.close();r.ok?res(r):rej(new Error(r.error||'bridge_error'));};ws.onerror=()=>{if(!done){done=true;clearTimeout(t);try{ws.close()}catch{};rej(new Error('ws_error'));}};ws.onclose=()=>{if(!done){done=true;clearTimeout(t);rej(new Error('ws_closed'));}};});
     const tryWifiDirect=()=>new Promise(async(res,rej)=>{if(!printerIP){rej(new Error('no_ip'));return;}try{const c=new AbortController();const t=setTimeout(()=>c.abort(),4000);await fetch(`http://${printerIP}/pstprnt`,{method:'POST',mode:'no-cors',body:generateZPL(),signal:c.signal});clearTimeout(t);res({printer:printerIP});}catch(e){rej(e);}});
-    const openPrintPopup=()=>{const qrUrl=encodeURIComponent(sku);const pN=productName.substring(0,28);const vN=variantName.substring(0,28);const iS='https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+qrUrl;const mC=(b)=>'<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:0.6mm 0.8mm 1.6mm;overflow:hidden;box-sizing:border-box;'+(b?'border-right:0.5px dashed #aaa;':'')+'">'+'<div style="font-size:6.5pt;font-weight:900;width:100%;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;color:#000;">'+pN+'</div>'+'<img src="'+iS+'" style="width:15mm;height:15mm;image-rendering:pixelated;display:block;"/>'+'<div style="font-size:5.5pt;font-weight:700;width:100%;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;color:#000;">'+vN+'</div></div>';var old=document.getElementById('zpl-print-frame');if(old)old.parentNode.removeChild(old);var iframe=document.createElement('iframe');iframe.id='zpl-print-frame';iframe.style.cssText='position:fixed;left:-9999px;top:0;width:100mm;height:25mm;border:none;';document.body.appendChild(iframe);var doc=iframe.contentDocument||iframe.contentWindow.document;var sheet='<div class="sheet">'+mC(true)+mC(true)+mC(false)+'</div>';var pages='';for(var pi=0;pi<(copies||1);pi++){pages+=sheet;}doc.open();doc.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><style>@page{size:100mm 25mm;margin:0;}html,body{margin:0;padding:0;background:white;-webkit-print-color-adjust:exact;print-color-adjust:exact;}body{font-family:Arial,Helvetica,sans-serif;}.sheet{width:100mm;height:25mm;display:flex;flex-direction:row;page-break-after:always;break-after:page;background:white;overflow:hidden;}.sheet:last-child{page-break-after:auto;break-after:auto;}*{box-sizing:border-box;}</style></head><body>'+pages+'</bo'+'dy></html>');doc.close();var imgs=doc.querySelectorAll('img');var loaded=0;var total=imgs.length;var doPrint=function(){iframe.contentWindow.focus();try{iframe.contentWindow.print();}catch(e){window.print();}setTimeout(function(){var f=document.getElementById('zpl-print-frame');if(f)f.parentNode.removeChild(f);},5000);};if(total===0){setTimeout(doPrint,500);}else{imgs.forEach(function(img){var onDone=function(){loaded++;if(loaded>=total)setTimeout(doPrint,500);};if(img.complete&&img.naturalWidth>0)onDone();else{img.onload=onDone;img.onerror=onDone;}});}};
+    const openPrintPopup=()=>{var pages='';var sheet=stickerSheetHtml({productName,variantName,sku});for(var pi=0;pi<(copies||1);pi++){pages+=sheet;}var old=document.getElementById('zpl-print-frame');if(old)old.parentNode.removeChild(old);var iframe=document.createElement('iframe');iframe.id='zpl-print-frame';iframe.style.cssText='position:fixed;left:-9999px;top:0;width:100mm;height:25mm;border:none;';document.body.appendChild(iframe);var doc=iframe.contentDocument||iframe.contentWindow.document;doc.open();doc.write(stickerPrintDoc(pages));doc.close();var imgs=doc.querySelectorAll('img');var loaded=0;var total=imgs.length;var doPrint=function(){iframe.contentWindow.focus();try{iframe.contentWindow.print();}catch(e){window.print();}setTimeout(function(){var f=document.getElementById('zpl-print-frame');if(f)f.parentNode.removeChild(f);},5000);};if(total===0){setTimeout(doPrint,500);}else{imgs.forEach(function(img){var onDone=function(){loaded++;if(loaded>=total)setTimeout(doPrint,500);};if(img.complete&&img.naturalWidth>0)onDone();else{img.onload=onDone;img.onerror=onDone;}});}};
     const handleSmartPrint=async(e)=>{addRipple(e);if(status==='printing')return;setStatus('printing');setStatusMsg('');setShowConfetti(false);if(bridgeUrl){setStatusMsg('กำลังเชื่อมต่อ Bridge...');try{await tryWsBridge();setStatus('success');setStatusMsg(`พิมพ์ ${copies} แผ่น (${copies*3} ดวง) สำเร็จ!`);setShowConfetti(true);setTimeout(()=>{setStatus('idle');setStatusMsg('');setShowConfetti(false);},5000);return;}catch(e){console.warn('WS:',e.message);}}if(printerIP){setStatusMsg('ส่งตรงไปเครื่องพิมพ์...');try{await tryWifiDirect();setStatus('success');setStatusMsg(`พิมพ์ ${copies} แผ่น สำเร็จ!`);setShowConfetti(true);setTimeout(()=>{setStatus('idle');setStatusMsg('');setShowConfetti(false);},5000);return;}catch(e){console.warn('WiFi:',e.message);}}openPrintPopup();setStatus('fallback');setStatusMsg(`เปิดหน้าต่างพิมพ์ ${copies} แผ่น (${copies*3} ดวง) แล้ว — ตั้ง Copies = 1`);setTimeout(()=>{setStatus('idle');setStatusMsg('');},6000);};
     const zplText=generateZPL(); const isReady=!!(bridgeUrl||printerIP);
     return (
@@ -536,17 +578,9 @@ const wait=(ms)=>new Promise(r=>setTimeout(r,ms));
 
 // เรียงหน้าตามลำดับ SKU: SKU แรกครบทุกแผ่นก่อน แล้วค่อยขึ้น SKU ถัดไป
 const openBatchPrintPopup=(items)=>{
-    const cell=(item,border)=>{
-        const iS='https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(item.sku);
-        const pN=String(item.productName||'').substring(0,28); const vN=String(item.variantName||'').substring(0,28);
-        return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:0.6mm 0.8mm 1.6mm;overflow:hidden;box-sizing:border-box;'+(border?'border-right:0.5px dashed #aaa;':'')+'">'
-            +'<div style="font-size:6.5pt;font-weight:900;width:100%;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;color:#000;">'+pN+'</div>'
-            +'<img src="'+iS+'" style="width:15mm;height:15mm;image-rendering:pixelated;display:block;"/>'
-            +'<div style="font-size:5.5pt;font-weight:700;width:100%;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;color:#000;">'+vN+'</div></div>';
-    };
     var pages='';
     items.forEach(function(item){
-        var sheet='<div class="sheet">'+cell(item,true)+cell(item,true)+cell(item,false)+'</div>';
+        var sheet=stickerSheetHtml(item);
         for(var pi=0;pi<(item.copies||1);pi++){pages+=sheet;}
     });
     var old=document.getElementById('zpl-print-frame'); if(old)old.parentNode.removeChild(old);
@@ -555,7 +589,7 @@ const openBatchPrintPopup=(items)=>{
     document.body.appendChild(iframe);
     var doc=iframe.contentDocument||iframe.contentWindow.document;
     doc.open();
-    doc.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><style>@page{size:100mm 25mm;margin:0;}html,body{margin:0;padding:0;background:white;-webkit-print-color-adjust:exact;print-color-adjust:exact;}body{font-family:Arial,Helvetica,sans-serif;}.sheet{width:100mm;height:25mm;display:flex;flex-direction:row;page-break-after:always;break-after:page;background:white;overflow:hidden;}.sheet:last-child{page-break-after:auto;break-after:auto;}*{box-sizing:border-box;}</style></head><body>'+pages+'</bo'+'dy></html>');
+    doc.write(stickerPrintDoc(pages));
     doc.close();
     var imgs=doc.querySelectorAll('img'); var loaded=0; var total=imgs.length;
     var doPrint=function(){iframe.contentWindow.focus();try{iframe.contentWindow.print();}catch(e){window.print();}setTimeout(function(){var f=document.getElementById('zpl-print-frame');if(f)f.parentNode.removeChild(f);},5000);};
