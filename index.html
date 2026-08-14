@@ -379,11 +379,20 @@ const QR_MM = LABEL_H_MM - LABEL_PAD_MM * 2;                                  //
 const TEXT_COL_MM = (LABEL_W_MM - LABEL_PAD_MM * 2 - QR_MM - QR_GAP_MM * 2) / 2;  // 2.8
 const QR_LEFT_MM = LABEL_PAD_MM + TEXT_COL_MM + QR_GAP_MM;                    // 5.5
 const TEXT_R_LEFT_MM = QR_LEFT_MM + QR_MM + QR_GAP_MM;                        // 27.2
+/* The sheet is written from scratch into an iframe, so it inherits none of the
+   app's <link>s — the webfont included. Left to Arial the captions had no Thai
+   glyphs to use and each OS substituted its own face (Thonburi on macOS,
+   Leelawadee UI on Windows), which differ enough in x-height and width that
+   the same pt size printed at visibly different sizes. The print document
+   therefore pulls Noto Sans Thai itself, for the Latin too so both scripts
+   come from one face, and printing waits for it. */
+const STICKER_FONT = "'Noto Sans Thai',Arial,Helvetica,sans-serif";
+const STICKER_FONT_URL = 'https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;700;900&display=swap';
 const escHtml=(s)=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const stickerSheetCss=
      '@page{size:'+SHEET_W_MM+'mm '+LABEL_H_MM+'mm;margin:0;}'
     +'html,body{margin:0;padding:0;background:white;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}'
-    +'body{font-family:Arial,Helvetica,sans-serif;}'
+    +'body{font-family:'+STICKER_FONT+';}'
     +'*{box-sizing:border-box;}'
     +'.sheet{position:relative;width:'+SHEET_W_MM+'mm;height:'+LABEL_H_MM+'mm;overflow:hidden;background:white;page-break-after:always;break-after:page;}'
     +'.sheet:last-child{page-break-after:auto;break-after:auto;}'
@@ -457,8 +466,27 @@ const StickerSheetPreview = ({ productName, variantName, sku, scale = 3 }) => {
         </div>
     );
 };
-const stickerPrintDoc=(pages)=>'<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'
-    +stickerSheetCss+'</style></head><body>'+pages+'</bo'+'dy></html>';
+const stickerPrintDoc=(pages)=>'<!DOCTYPE html><html><head><meta charset="UTF-8">'
+    +'<link rel="stylesheet" href="'+STICKER_FONT_URL+'">'
+    +'<style>'+stickerSheetCss+'</style></head><body>'+pages+'</bo'+'dy></html>';
+
+/* Hold the print dialog until the QR images and the webfont have arrived —
+   printing early gives blank squares or the OS fallback face. Anything that
+   fails or hangs still prints: better a fallback font than no dialog. */
+const whenStickerDocReady=(doc,run)=>{
+    const waits=Array.prototype.map.call(doc.querySelectorAll('img'),(img)=>
+        (img.complete&&img.naturalWidth>0)?Promise.resolve()
+            :new Promise(res=>{img.onload=res;img.onerror=res;}));
+    if(doc.fonts&&doc.fonts.load){
+        waits.push(doc.fonts.load('900 '+CAPTION_NAME_PT+'pt "Noto Sans Thai"'));
+        waits.push(doc.fonts.load('700 '+CAPTION_VAR_PT+'pt "Noto Sans Thai"'));
+        if(doc.fonts.ready)waits.push(doc.fonts.ready);
+    }
+    let fired=false;
+    const go=()=>{if(!fired){fired=true;setTimeout(run,300);}};
+    Promise.all(waits).then(go,go);
+    setTimeout(go,8000);
+};
 
 const SearchableSelect = ({ id, label, options, value, onChange, placeholder }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -599,7 +627,7 @@ const StickerPreviewModal = ({ data, onClose, printerConfig }) => {
     const addRipple=(e)=>{const b=e.currentTarget.getBoundingClientRect();const id=Date.now();setRipples(r=>[...r,{id,x:e.clientX-b.left,y:e.clientY-b.top}]);setTimeout(()=>setRipples(r=>r.filter(rp=>rp.id!==id)),700);};
     const tryWsBridge=()=>new Promise((res,rej)=>{if(!bridgeUrl){rej(new Error('no_bridge'));return;}const url=bridgeUrl.startsWith('ws')?bridgeUrl:`ws://${bridgeUrl}`;let ws,done=false;try{ws=new WebSocket(url);}catch(e){rej(e);return;}const t=setTimeout(()=>{done=true;try{ws.close()}catch{};rej(new Error('timeout'));},5000);ws.onopen=()=>ws.send(JSON.stringify({action:'print',productName,variantName,sku,copies}));ws.onmessage=e=>{if(done)return;done=true;clearTimeout(t);let r;try{r=JSON.parse(e.data);}catch{r={};}ws.close();r.ok?res(r):rej(new Error(r.error||'bridge_error'));};ws.onerror=()=>{if(!done){done=true;clearTimeout(t);try{ws.close()}catch{};rej(new Error('ws_error'));}};ws.onclose=()=>{if(!done){done=true;clearTimeout(t);rej(new Error('ws_closed'));}};});
     const tryWifiDirect=()=>new Promise(async(res,rej)=>{if(!printerIP){rej(new Error('no_ip'));return;}try{const c=new AbortController();const t=setTimeout(()=>c.abort(),4000);await fetch(`http://${printerIP}/pstprnt`,{method:'POST',mode:'no-cors',body:generateZPL(),signal:c.signal});clearTimeout(t);res({printer:printerIP});}catch(e){rej(e);}});
-    const openPrintPopup=()=>{var pages='';var sheet=stickerSheetHtml({productName,variantName,sku});for(var pi=0;pi<(copies||1);pi++){pages+=sheet;}var old=document.getElementById('zpl-print-frame');if(old)old.parentNode.removeChild(old);var iframe=document.createElement('iframe');iframe.id='zpl-print-frame';iframe.style.cssText='position:fixed;left:-9999px;top:0;width:100mm;height:25mm;border:none;';document.body.appendChild(iframe);var doc=iframe.contentDocument||iframe.contentWindow.document;doc.open();doc.write(stickerPrintDoc(pages));doc.close();var imgs=doc.querySelectorAll('img');var loaded=0;var total=imgs.length;var doPrint=function(){iframe.contentWindow.focus();try{iframe.contentWindow.print();}catch(e){window.print();}setTimeout(function(){var f=document.getElementById('zpl-print-frame');if(f)f.parentNode.removeChild(f);},5000);};if(total===0){setTimeout(doPrint,500);}else{imgs.forEach(function(img){var onDone=function(){loaded++;if(loaded>=total)setTimeout(doPrint,500);};if(img.complete&&img.naturalWidth>0)onDone();else{img.onload=onDone;img.onerror=onDone;}});}};
+    const openPrintPopup=()=>{var pages='';var sheet=stickerSheetHtml({productName,variantName,sku});for(var pi=0;pi<(copies||1);pi++){pages+=sheet;}var old=document.getElementById('zpl-print-frame');if(old)old.parentNode.removeChild(old);var iframe=document.createElement('iframe');iframe.id='zpl-print-frame';iframe.style.cssText='position:fixed;left:-9999px;top:0;width:100mm;height:25mm;border:none;';document.body.appendChild(iframe);var doc=iframe.contentDocument||iframe.contentWindow.document;doc.open();doc.write(stickerPrintDoc(pages));doc.close();var doPrint=function(){iframe.contentWindow.focus();try{iframe.contentWindow.print();}catch(e){window.print();}setTimeout(function(){var f=document.getElementById('zpl-print-frame');if(f)f.parentNode.removeChild(f);},5000);};whenStickerDocReady(doc,doPrint);};
     const handleSmartPrint=async(e)=>{addRipple(e);if(status==='printing')return;setStatus('printing');setStatusMsg('');setShowConfetti(false);if(bridgeUrl){setStatusMsg('กำลังเชื่อมต่อ Bridge...');try{await tryWsBridge();setStatus('success');setStatusMsg(`พิมพ์ ${copies} แผ่น (${copies*3} ดวง) สำเร็จ!`);setShowConfetti(true);setTimeout(()=>{setStatus('idle');setStatusMsg('');setShowConfetti(false);},5000);return;}catch(e){console.warn('WS:',e.message);}}if(printerIP){setStatusMsg('ส่งตรงไปเครื่องพิมพ์...');try{await tryWifiDirect();setStatus('success');setStatusMsg(`พิมพ์ ${copies} แผ่น สำเร็จ!`);setShowConfetti(true);setTimeout(()=>{setStatus('idle');setStatusMsg('');setShowConfetti(false);},5000);return;}catch(e){console.warn('WiFi:',e.message);}}openPrintPopup();setStatus('fallback');setStatusMsg(`เปิดหน้าต่างพิมพ์ ${copies} แผ่น (${copies*3} ดวง) แล้ว — ตั้ง Copies = 1`);setTimeout(()=>{setStatus('idle');setStatusMsg('');},6000);};
     const zplText=generateZPL(); const isReady=!!(bridgeUrl||printerIP);
     return (
@@ -692,10 +720,8 @@ const openBatchPrintPopup=(items)=>{
     doc.open();
     doc.write(stickerPrintDoc(pages));
     doc.close();
-    var imgs=doc.querySelectorAll('img'); var loaded=0; var total=imgs.length;
     var doPrint=function(){iframe.contentWindow.focus();try{iframe.contentWindow.print();}catch(e){window.print();}setTimeout(function(){var f=document.getElementById('zpl-print-frame');if(f)f.parentNode.removeChild(f);},5000);};
-    if(total===0){setTimeout(doPrint,500);}
-    else{imgs.forEach(function(img){var onDone=function(){loaded++;if(loaded>=total)setTimeout(doPrint,600);};if(img.complete&&img.naturalWidth>0)onDone();else{img.onload=onDone;img.onerror=onDone;}});}
+    whenStickerDocReady(doc,doPrint);
 };
 
 const BatchQuantityModal = ({ rows, onClose, onProceed, onRemove }) => {
