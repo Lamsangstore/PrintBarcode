@@ -323,33 +323,43 @@ body{font-family:'Noto Sans Thai','Plus Jakarta Sans',sans-serif;background:var(
 <div id="root"></div>
 <script type="text/babel">
 const { useState, useEffect, useMemo, useRef } = React;
-/* ===== 3-up QR sticker sheet: 100mm x 25mm = three die-cut labels =====
-   Two things used to push each QR off the middle of its label:
-   1. flex:1 let the browser split the row itself, and the 0.5px dashed dividers
-      (rounded up to a whole device pixel by the print engine) were taken out of
-      that split, so cell 1/2 ended up wider than cell 3. The cells are now
-      absolutely positioned, and the dividers are overlays with no layout width.
-   2. the row was pinned to a hard 100mm. If the printer driver's page is not
-      exactly 100mm (a 4in roll is 101.6mm) the artwork no longer lines up with
-      the die-cut, and the error grows label by label — the 3rd one drifts most.
-      Columns are now thirds of the real page width, so they follow the paper.
+/* ===== 3-up QR sticker sheet =====
+   The real stock is three 32mm x 25mm die-cut labels with a 2mm gap between
+   them, so the web is 32*3 + 2*2 = 100mm and the labels sit at 0 / 34 / 68mm.
+   The old layout split the 100mm into equal thirds (33.3333mm) and never
+   accounted for the gaps, so every label was printed 33.3333mm apart on stock
+   that steps 34mm: label 1 landed 0.67mm right of centre, label 2 straddled
+   its gap, label 3 ended up 1.33mm left — the drift the printouts showed.
+   Cells are absolutely positioned at the real label origins, and the cut
+   guides are overlays with no layout width, so nothing can be redistributed.
    SHEET_SHIFT_MM nudges the whole artwork sideways when the roll itself prints
    off-register (positive = move right, e.g. 0.5 or -0.5). */
+const LABEL_W_MM = 32;      // width of one die-cut sticker
+const LABEL_H_MM = 25;      // height of one die-cut sticker
+const LABEL_GAP_MM = 2;     // liner gap between stickers
 const SHEET_SHIFT_MM = 0;
+const LABEL_PITCH_MM = LABEL_W_MM + LABEL_GAP_MM;                 // 34
+const SHEET_W_MM = LABEL_W_MM * 3 + LABEL_GAP_MM * 2;             // 100
+const ZPL_DPMM = 300 / 25.4;   // 300dpi print head, for the direct-ZPL path
+const ZPL_QR_DOTS = 222;       // rendered width of ^BQN,2,8, used to centre it
 const escHtml=(s)=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const stickerSheetCss=
-     '@page{size:100mm 25mm;margin:0;}'
+     '@page{size:'+SHEET_W_MM+'mm '+LABEL_H_MM+'mm;margin:0;}'
     +'html,body{margin:0;padding:0;background:white;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}'
     +'body{font-family:Arial,Helvetica,sans-serif;}'
     +'*{box-sizing:border-box;}'
-    +'.sheet{position:relative;width:100%;height:25mm;overflow:hidden;background:white;page-break-after:always;break-after:page;}'
+    +'.sheet{position:relative;width:'+SHEET_W_MM+'mm;height:'+LABEL_H_MM+'mm;overflow:hidden;background:white;page-break-after:always;break-after:page;}'
     +'.sheet:last-child{page-break-after:auto;break-after:auto;}'
-    +'.inner{position:absolute;top:0;left:'+SHEET_SHIFT_MM+'mm;width:100%;height:25mm;}'
-    +'.cell{position:absolute;top:0;height:25mm;width:33.3333%;padding:0.6mm 0.8mm 1.6mm;overflow:hidden;'
+    +'.inner{position:absolute;top:0;left:'+SHEET_SHIFT_MM+'mm;width:'+SHEET_W_MM+'mm;height:'+LABEL_H_MM+'mm;}'
+    +'.cell{position:absolute;top:0;height:'+LABEL_H_MM+'mm;width:'+LABEL_W_MM+'mm;padding:0.6mm 0.8mm 1.6mm;overflow:hidden;'
         +'display:flex;flex-direction:column;align-items:center;justify-content:space-between;}'
-    +'.c1{left:0;}.c2{left:33.3333%;}.c3{left:66.6667%;}'
-    +'.cut{position:absolute;top:0;height:25mm;width:0;border-left:0.5px dashed #aaa;}'
-    +'.k1{left:33.3333%;}.k2{left:66.6667%;}'
+    +'.c1{left:0;}'
+    +'.c2{left:'+LABEL_PITCH_MM+'mm;}'
+    +'.c3{left:'+(LABEL_PITCH_MM*2)+'mm;}'
+    /* guides sit in the middle of the liner gap, never on a sticker */
+    +'.cut{position:absolute;top:0;height:'+LABEL_H_MM+'mm;width:0;border-left:0.5px dashed #aaa;}'
+    +'.k1{left:'+(LABEL_W_MM+LABEL_GAP_MM/2)+'mm;}'
+    +'.k2{left:'+(LABEL_PITCH_MM+LABEL_W_MM+LABEL_GAP_MM/2)+'mm;}'
     +'.nm{font-size:6.5pt;font-weight:900;width:100%;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;color:#000;}'
     +'.vr{font-size:5.5pt;font-weight:700;width:100%;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;color:#000;}'
     +'.qr{width:15mm;height:15mm;image-rendering:pixelated;display:block;}';
@@ -501,7 +511,7 @@ const StickerPreviewModal = ({ data, onClose, printerConfig }) => {
     const {row,copies}=data; const productName=String(row[3]||''); const sku=String(row[1]||''); const variantName=String(row[4]||'');
     const [status,setStatus]=useState('idle'); const [statusMsg,setStatusMsg]=useState(''); const [showZpl,setShowZpl]=useState(false); const [showConfetti,setShowConfetti]=useState(false); const [ripples,setRipples]=useState([]);
     const {printerIP,bridgeUrl}=printerConfig;
-    const generateZPL=()=>{const p=productName.substring(0,25);const v=variantName.substring(0,25);return `^XA^CI28^PW1181^LL295^MD20\n^FO4,4^A0N,28,28^FB386,1,0,C^FD${p}^FS\n^FO90,40^BQN,2,8^FDQA,${sku}^FS\n^FO4,262^A0N,26,26^FB386,1,0,C^FD${v}^FS\n^FO398,4^A0N,28,28^FB386,1,0,C^FD${p}^FS\n^FO484,40^BQN,2,8^FDQA,${sku}^FS\n^FO398,262^A0N,26,26^FB386,1,0,C^FD${v}^FS\n^FO792,4^A0N,28,28^FB386,1,0,C^FD${p}^FS\n^FO878,40^BQN,2,8^FDQA,${sku}^FS\n^FO792,262^A0N,26,26^FB386,1,0,C^FD${v}^FS\n^PQ${copies}^XZ`;};
+    const generateZPL=()=>buildZplFor({productName,variantName,sku,copies});
     const addRipple=(e)=>{const b=e.currentTarget.getBoundingClientRect();const id=Date.now();setRipples(r=>[...r,{id,x:e.clientX-b.left,y:e.clientY-b.top}]);setTimeout(()=>setRipples(r=>r.filter(rp=>rp.id!==id)),700);};
     const tryWsBridge=()=>new Promise((res,rej)=>{if(!bridgeUrl){rej(new Error('no_bridge'));return;}const url=bridgeUrl.startsWith('ws')?bridgeUrl:`ws://${bridgeUrl}`;let ws,done=false;try{ws=new WebSocket(url);}catch(e){rej(e);return;}const t=setTimeout(()=>{done=true;try{ws.close()}catch{};rej(new Error('timeout'));},5000);ws.onopen=()=>ws.send(JSON.stringify({action:'print',productName,variantName,sku,copies}));ws.onmessage=e=>{if(done)return;done=true;clearTimeout(t);let r;try{r=JSON.parse(e.data);}catch{r={};}ws.close();r.ok?res(r):rej(new Error(r.error||'bridge_error'));};ws.onerror=()=>{if(!done){done=true;clearTimeout(t);try{ws.close()}catch{};rej(new Error('ws_error'));}};ws.onclose=()=>{if(!done){done=true;clearTimeout(t);rej(new Error('ws_closed'));}};});
     const tryWifiDirect=()=>new Promise(async(res,rej)=>{if(!printerIP){rej(new Error('no_ip'));return;}try{const c=new AbortController();const t=setTimeout(()=>c.abort(),4000);await fetch(`http://${printerIP}/pstprnt`,{method:'POST',mode:'no-cors',body:generateZPL(),signal:c.signal});clearTimeout(t);res({printer:printerIP});}catch(e){rej(e);}});
@@ -552,7 +562,16 @@ const rowKeyOf=(row)=>[row[0],row[1],row[8],row[9]].join('|');
 
 const buildZplFor=({productName,variantName,sku,copies})=>{
     const p=String(productName||'').substring(0,25); const v=String(variantName||'').substring(0,25); const s=String(sku||'');
-    return `^XA^CI28^PW1181^LL295^MD20\n^FO4,4^A0N,28,28^FB386,1,0,C^FD${p}^FS\n^FO90,40^BQN,2,8^FDQA,${s}^FS\n^FO4,262^A0N,26,26^FB386,1,0,C^FD${v}^FS\n^FO398,4^A0N,28,28^FB386,1,0,C^FD${p}^FS\n^FO484,40^BQN,2,8^FDQA,${s}^FS\n^FO398,262^A0N,26,26^FB386,1,0,C^FD${v}^FS\n^FO792,4^A0N,28,28^FB386,1,0,C^FD${p}^FS\n^FO878,40^BQN,2,8^FDQA,${s}^FS\n^FO792,262^A0N,26,26^FB386,1,0,C^FD${v}^FS\n^PQ${copies}^XZ`;
+    // 300dpi head: 11.811 dots/mm. Same geometry as the browser sheet — labels
+    // are 32mm wide on a 34mm pitch, so the three columns start 402 dots apart,
+    // not at even thirds of the 1181-dot web.
+    const D=(mm)=>Math.round(mm*ZPL_DPMM);
+    const org=[0,D(LABEL_PITCH_MM),D(LABEL_PITCH_MM*2)];
+    const lw=D(LABEL_W_MM);                 // 378 dots = 32mm
+    const fb=lw-8;                          // text block, 4 dots padding each side
+    const qx=Math.round((lw-ZPL_QR_DOTS)/2);// centre the QR inside the label
+    const col=(x)=>`^FO${x+4},4^A0N,28,28^FB${fb},1,0,C^FD${p}^FS\n^FO${x+qx},40^BQN,2,8^FDQA,${s}^FS\n^FO${x+4},262^A0N,26,26^FB${fb},1,0,C^FD${v}^FS`;
+    return `^XA^CI28^PW${D(SHEET_W_MM)}^LL${D(LABEL_H_MM)}^MD20\n${org.map(col).join('\n')}\n^PQ${copies}^XZ`;
 };
 
 const wsPrintOnce=(bridgeUrl,payload)=>new Promise((res,rej)=>{
