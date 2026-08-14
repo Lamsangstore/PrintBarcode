@@ -374,6 +374,11 @@ const QR_GAP_MM = 0.7;      // white lane between the QR and each caption
 const CAPTION_OPT_MM = 0.5;
 const CAPTION_NAME_PT = 6;
 const CAPTION_VAR_PT = 5.5;
+/* Light rather than black. At 900 the captions printed noticeably heavier
+   than the Thai face macOS used to fall back to, and direct thermal spreads
+   the ink a little further again. Raise these if the strokes come out faint. */
+const CAPTION_NAME_WEIGHT = 500;
+const CAPTION_VAR_WEIGHT = 400;
 const PT_MM = 25.4 / 72;
 const QR_MM = LABEL_H_MM - LABEL_PAD_MM * 2;                                  // 21
 const TEXT_COL_MM = (LABEL_W_MM - LABEL_PAD_MM * 2 - QR_MM - QR_GAP_MM * 2) / 2;  // 2.8
@@ -387,7 +392,7 @@ const TEXT_R_LEFT_MM = QR_LEFT_MM + QR_MM + QR_GAP_MM;                        //
    therefore pulls Noto Sans Thai itself, for the Latin too so both scripts
    come from one face, and printing waits for it. */
 const STICKER_FONT = "'Noto Sans Thai',Arial,Helvetica,sans-serif";
-const STICKER_FONT_URL = 'https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;700;900&display=swap';
+const STICKER_FONT_URL = 'https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@100..900&display=swap';
 const escHtml=(s)=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const stickerSheetCss=
      '@page{size:'+SHEET_W_MM+'mm '+LABEL_H_MM+'mm;margin:0;}'
@@ -420,8 +425,8 @@ const stickerSheetCss=
         +'transform:translateX('+CAPTION_OPT_MM+'mm) rotate(-90deg);'
         +'display:block;line-height:'+TEXT_COL_MM+'mm;text-align:center;white-space:nowrap;'
         +'overflow:hidden;text-overflow:ellipsis;color:#000;}'
-    +'.nm{font-size:'+CAPTION_NAME_PT+'pt;font-weight:900;}'
-    +'.vn{font-size:'+CAPTION_VAR_PT+'pt;font-weight:700;}';
+    +'.nm{font-size:'+CAPTION_NAME_PT+'pt;font-weight:'+CAPTION_NAME_WEIGHT+';}'
+    +'.vn{font-size:'+CAPTION_VAR_PT+'pt;font-weight:'+CAPTION_VAR_WEIGHT+';}';
 const stickerSheetHtml=({productName,variantName,sku})=>{
     const px=Math.round(QR_MM*ZPL_DPMM);   // ask the QR service for print-resolution pixels
     const src='https://api.qrserver.com/v1/create-qr-code/?size='+px+'x'+px+'&data='+encodeURIComponent(String(sku||''));
@@ -454,13 +459,13 @@ const StickerSheetPreview = ({ productName, variantName, sku, scale = 3 }) => {
             {[0,1,2].map(n=>(
                 <div key={n} style={{position:'absolute',top:0,left:u(LABEL_PITCH_MM*n),
                     width:u(LABEL_W_MM),height:u(LABEL_H_MM),background:'white',overflow:'hidden'}}>
-                    {caption(productName,LABEL_PAD_MM,CAPTION_NAME_PT,900)}
+                    {caption(productName,LABEL_PAD_MM,CAPTION_NAME_PT,CAPTION_NAME_WEIGHT)}
                     <div className="qr-wrapper" style={{position:'absolute',top:u(LABEL_PAD_MM),left:u(QR_LEFT_MM),
                         width:u(QR_MM),height:u(QR_MM)}}>
                         <img src={qrSrc} alt="QR" style={{width:'100%',height:'100%',display:'block',imageRendering:'pixelated'}}/>
                         <div className="scan-line"/>
                     </div>
-                    {caption(variantName,TEXT_R_LEFT_MM,CAPTION_VAR_PT,700)}
+                    {caption(variantName,TEXT_R_LEFT_MM,CAPTION_VAR_PT,CAPTION_VAR_WEIGHT)}
                 </div>
             ))}
         </div>
@@ -478,8 +483,8 @@ const whenStickerDocReady=(doc,run)=>{
         (img.complete&&img.naturalWidth>0)?Promise.resolve()
             :new Promise(res=>{img.onload=res;img.onerror=res;}));
     if(doc.fonts&&doc.fonts.load){
-        waits.push(doc.fonts.load('900 '+CAPTION_NAME_PT+'pt "Noto Sans Thai"'));
-        waits.push(doc.fonts.load('700 '+CAPTION_VAR_PT+'pt "Noto Sans Thai"'));
+        waits.push(doc.fonts.load(CAPTION_NAME_WEIGHT+' '+CAPTION_NAME_PT+'pt "Noto Sans Thai"'));
+        waits.push(doc.fonts.load(CAPTION_VAR_WEIGHT+' '+CAPTION_VAR_PT+'pt "Noto Sans Thai"'));
         if(doc.fonts.ready)waits.push(doc.fonts.ready);
     }
     let fired=false;
