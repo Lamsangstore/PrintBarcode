@@ -341,6 +341,7 @@ const SHEET_SHIFT_MM = 0;
 const LABEL_PITCH_MM = LABEL_W_MM + LABEL_GAP_MM;                 // 34
 const SHEET_W_MM = LABEL_W_MM * 3 + LABEL_GAP_MM * 2;             // 100
 const ZPL_DPMM = 300 / 25.4;   // 300dpi print head, for the direct-ZPL path
+const ZPL_QR_DOTS = 222;       // rendered width of ^BQN,2,8, used to centre it
 /* Inside one label: 1mm of quiet edge all round, then the QR takes every
    millimetre the 25mm label height allows (25 - 1 - 1 = 23mm) and the two
    captions run vertically down the strips left over on either side. Stacking
