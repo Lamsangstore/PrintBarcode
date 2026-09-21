@@ -1056,7 +1056,7 @@ const App = () => {
        กุญแจออกที่ หลังบ้าน → Hub เชื่อมแอป (ตั้ง origin เป็น https://barcode.lamsangstore.com · ไม่เปิดต้นทุน)
        เว้นว่าง = ใช้ชื่อจากชีตอย่างเดียวเหมือนเดิม · Hub ล่ม = ใช้ชื่อจากชีตต่อ ไม่ทำให้หน้าพัง */
     const HUB_URL="https://lamsangstore.com/api/hub/v1/products?inactive=1";
-    const HUB_KEY="";
+    const HUB_KEY="lsh_EDj1fBvytk8SvpE6kU9X3tFzd9tp6Y7q85TL3eYsEdA";
     const applyHubNames=async(rows)=>{if(!HUB_KEY)return 0;try{const res=await fetch(HUB_URL,{headers:{Authorization:`Bearer ${HUB_KEY}`}});if(!res.ok)throw new Error(`HTTP ${res.status}`);const json=await res.json();const bySku=new Map();(json.items||[]).forEach(it=>{if(it.sku&&it.shortName)bySku.set(String(it.sku).trim(),it.shortName);});let n=0;rows.forEach(r=>{const name=bySku.get(String(r[1]).trim());if(name){r[3]=name;r[7]=name;n++;}});return n;}catch(err){console.warn('[hub] ใช้ชื่อจากชีตแทน',err);return 0;}};
     useEffect(()=>{fetchData();},[]);
 
