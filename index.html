@@ -1051,20 +1051,25 @@ const App = () => {
     const [displayCount,setDisplayCount]=useState(0);
 
     const PROXY_URL="https://script.google.com/macros/s/AKfycbySdchoxKfxsJ3KtNHJgNxD0weptxTlq0-ZpYzrUACa2FoYsqagtKnsEEe_lHDBWOVR/exec";
-    /* Hub ของร้าน (lamsangstore.com) — ชื่อย่อสินค้ากลาง เช่น "B21 Charming"
+    /* Hub ของร้าน (lamsangstore.com) — ชื่อย่อสินค้ากลาง เช่น "B21 Charming" + รูปประจำสี
        รายการแถวยังมาจากชีตเหมือนเดิม (มีของที่ยังไม่ขึ้นเว็บ) แต่ชื่อบนสติกเกอร์/ชื่อรุ่นเอาจาก Hub ตาม SKU
+       รูปในตารางใช้รูปประจำสีของ SKU นั้น ไม่มีก็ถอยไปใช้รูปปก (เก็บไว้ที่ row[10])
        กุญแจออกที่ หลังบ้าน → Hub เชื่อมแอป (ตั้ง origin เป็น https://barcode.lamsangstore.com · ไม่เปิดต้นทุน)
        เว้นว่าง = ใช้ชื่อจากชีตอย่างเดียวเหมือนเดิม · Hub ล่ม = ใช้ชื่อจากชีตต่อ ไม่ทำให้หน้าพัง */
     const HUB_URL="https://lamsangstore.com/api/hub/v1/products?inactive=1";
     const HUB_KEY="lsh_EDj1fBvytk8SvpE6kU9X3tFzd9tp6Y7q85TL3eYsEdA";
-    const applyHubNames=async(rows)=>{if(!HUB_KEY)return 0;try{const res=await fetch(HUB_URL,{headers:{Authorization:`Bearer ${HUB_KEY}`}});if(!res.ok)throw new Error(`HTTP ${res.status}`);const json=await res.json();const bySku=new Map();(json.items||[]).forEach(it=>{if(it.sku&&it.shortName)bySku.set(String(it.sku).trim(),it.shortName);});let n=0;rows.forEach(r=>{const name=bySku.get(String(r[1]).trim());if(name){r[3]=name;r[7]=name;n++;}});return n;}catch(err){console.warn('[hub] ใช้ชื่อจากชีตแทน',err);return 0;}};
+    const applyHubData=async(rows)=>{if(!HUB_KEY)return 0;try{const res=await fetch(HUB_URL,{headers:{Authorization:`Bearer ${HUB_KEY}`}});if(!res.ok)throw new Error(`HTTP ${res.status}`);const json=await res.json();const bySku=new Map();(json.items||[]).forEach(it=>{if(!it.sku)return;bySku.set(String(it.sku).trim(),{name:it.shortName||null,img:it.colorImageUrl||it.imageUrl||it.coverUrl||null});});let n=0;rows.forEach(r=>{const hit=bySku.get(String(r[1]).trim());if(!hit)return;if(hit.name){r[3]=hit.name;r[7]=hit.name;n++;}if(hit.img)r[10]=hit.img;});return n;}catch(err){console.warn('[hub] ใช้ชื่อจากชีตแทน',err);return 0;}};
     useEffect(()=>{fetchData();},[]);
 
-    const fetchData=async()=>{setLoading(true);setError(null);try{const res=await fetch(`${PROXY_URL}?path=inventory&t=${new Date().getTime()}`);if(!res.ok)throw new Error(`HTTP ${res.status}`);const json=await res.json();if(!json||!json.rows){const h=["no","sku","CF Code","product_name","variant_name","stock","FALSE","รุ่น","สี","ขนาด"];h[16]="ยังไม่มีข้อมูล";setHeaders(h);setRawData([]);setLoading(false);return;}let rl=Array.isArray(json.rows)?json.rows:Object.values(json.rows);const vr=rl.filter(r=>r&&typeof r==='object'&&(r.barcode||r.item_no));const rows=vr.map(r=>[r.item_no!==undefined?r.item_no:(r.barcode||""),r.sku!==undefined?r.sku:(r.barcode||""),r.cf_code||"",r.product_name||"",r.variant_name||"",r.stock||"",r.col_false||"",r.model||"",r.color||"",r.size||""]);await applyHubNames(rows);const h=["ลำดับ","Barcode/SKU","CF Code","product_name","variant_name","stock","FALSE","รุ่น","สี","ขนาด"];h[16]=json.meta?.synced_at||"-";setHeaders(h);setRawData(rows);setLoading(false);}catch(err){console.error(err);setError("เกิดข้อผิดพลาดในการโหลดข้อมูล: "+err.message);setLoading(false);}};
+    const fetchData=async()=>{setLoading(true);setError(null);try{const res=await fetch(`${PROXY_URL}?path=inventory&t=${new Date().getTime()}`);if(!res.ok)throw new Error(`HTTP ${res.status}`);const json=await res.json();if(!json||!json.rows){const h=["no","sku","CF Code","product_name","variant_name","stock","FALSE","รุ่น","สี","ขนาด"];h[16]="ยังไม่มีข้อมูล";setHeaders(h);setRawData([]);setLoading(false);return;}let rl=Array.isArray(json.rows)?json.rows:Object.values(json.rows);const vr=rl.filter(r=>r&&typeof r==='object'&&(r.barcode||r.item_no));const rows=vr.map(r=>[r.item_no!==undefined?r.item_no:(r.barcode||""),r.sku!==undefined?r.sku:(r.barcode||""),r.cf_code||"",r.product_name||"",r.variant_name||"",r.stock||"",r.col_false||"",r.model||"",r.color||"",r.size||""]);await applyHubData(rows);const h=["ลำดับ","Barcode/SKU","CF Code","product_name","variant_name","stock","FALSE","รุ่น","สี","ขนาด"];h[16]=json.meta?.synced_at||"-";setHeaders(h);setRawData(rows);setLoading(false);}catch(err){console.error(err);setError("เกิดข้อผิดพลาดในการโหลดข้อมูล: "+err.message);setLoading(false);}};
 
     const dropdownOptions=useMemo(()=>{const h=new Set(),i=new Set(),j=new Set();rawData.forEach(r=>{const vH=String(r[7]||'').toLowerCase(),vI=String(r[8]||'').toLowerCase(),vJ=String(r[9]||'').toLowerCase();const mH=!filterH||vH===filterH.toLowerCase(),mI=!filterI||vI===filterI.toLowerCase(),mJ=!filterJ||vJ===filterJ.toLowerCase();if(mI&&mJ&&r[7])h.add(r[7]);if(mH&&mJ&&r[8])i.add(r[8]);if(mH&&mI&&r[9])j.add(r[9]);});const so=["xs","s","m","l","xl","xxl","2xl","3xl","4xl","5xl","f","freesize"];const ss=(a,b)=>{const aL=String(a).toLowerCase().trim(),bL=String(b).toLowerCase().trim(),aI=so.indexOf(aL),bI=so.indexOf(bL);if(aI!==-1&&bI!==-1)return aI-bI;if(aI!==-1)return -1;if(bI!==-1)return 1;return aL.localeCompare(bL,'th');};return{h:[...h].sort((a,b)=>String(a).localeCompare(String(b),'th')),i:[...i].sort((a,b)=>String(a).localeCompare(String(b),'th')),j:[...j].sort(ss)};},[rawData,filterH,filterI,filterJ]);
 
-    const filteredData=useMemo(()=>{const filtered=rawData.filter(row=>{const vH=String(row[7]||'').toLowerCase(),vI=String(row[8]||'').toLowerCase(),vJ=String(row[9]||'').toLowerCase();const s=searchTerm.toLowerCase();const ok=!searchTerm||[String(row[0]),String(row[1]),String(row[2]),String(row[3]),vH,vI,vJ].some(v=>v.toLowerCase().includes(s));return ok&&(!filterH||vH===filterH.toLowerCase())&&(!filterI||vI===filterI.toLowerCase())&&(!filterJ||vJ===filterJ.toLowerCase());});const so=["xs","s","m","l","xl","xxl","2xl","3xl","4xl","5xl","f","freesize"];const gW=s=>{const idx=so.indexOf(String(s).toLowerCase().trim());return idx!==-1?idx:999;};return filtered.sort((a,b)=>{
+    const filteredData=useMemo(()=>{
+        /* ยังไม่เลือกตัวกรอง = ยังไม่โชว์อะไร (ร้านสั่ง 25 ก.ย. 2569)
+           รายการเต็มมีเกือบพันแถว เลื่อนหาเองไม่ไหว และเผลอ "เลือกทั้งหมด" แล้วสั่งพิมพ์ยกชุดได้ */
+        if(!(searchTerm||filterH||filterI||filterJ))return [];
+        const filtered=rawData.filter(row=>{const vH=String(row[7]||'').toLowerCase(),vI=String(row[8]||'').toLowerCase(),vJ=String(row[9]||'').toLowerCase();const s=searchTerm.toLowerCase();const ok=!searchTerm||[String(row[0]),String(row[1]),String(row[2]),String(row[3]),vH,vI,vJ].some(v=>v.toLowerCase().includes(s));return ok&&(!filterH||vH===filterH.toLowerCase())&&(!filterI||vI===filterI.toLowerCase())&&(!filterJ||vJ===filterJ.toLowerCase());});const so=["xs","s","m","l","xl","xxl","2xl","3xl","4xl","5xl","f","freesize"];const gW=s=>{const idx=so.indexOf(String(s).toLowerCase().trim());return idx!==-1?idx:999;};return filtered.sort((a,b)=>{
         // 1) รุ่น  2) ไซส์ (เรียงตามลำดับไซส์จริง)  3) สี
         const mc=String(a[7]||"").localeCompare(String(b[7]||""),'th',{numeric:true});if(mc!==0)return mc;
         const wa=gW(a[9]),wb=gW(b[9]);if(wa!==wb)return wa-wb;
@@ -1225,18 +1230,28 @@ const App = () => {
                                             else{const fk=new Set(filteredData.map(rowKeyOf));setSelectedRows(prev=>prev.filter(r=>!fk.has(rowKeyOf(r))));}
                                         }}/>
                                 </th>
-                                <th style={{width:"20%",textAlign:"left",fontSize:"13px"}}>ลำดับ &amp; Barcode</th>
-                                <th style={{width:"27%",textAlign:"center",fontSize:"13px"}}>{labelH}</th>
-                                <th style={{width:"15%",textAlign:"center",fontSize:"13px"}}>{labelI}</th>
-                                <th style={{width:"13%",textAlign:"center",fontSize:"13px"}}>{labelJ}</th>
-                                <th style={{width:"10%",textAlign:"center",fontSize:"13px"}}>ใบแจ้ง</th>
-                                <th style={{width:"10%",textAlign:"center",fontSize:"13px"}}>พิมพ์</th>
+                                <th style={{width:"8%",textAlign:"center",fontSize:"13px"}}>รูป</th>
+                                <th style={{width:"18%",textAlign:"left",fontSize:"13px"}}>ลำดับ &amp; Barcode</th>
+                                <th style={{width:"23%",textAlign:"center",fontSize:"13px"}}>{labelH}</th>
+                                <th style={{width:"13%",textAlign:"center",fontSize:"13px"}}>{labelI}</th>
+                                <th style={{width:"11%",textAlign:"center",fontSize:"13px"}}>{labelJ}</th>
+                                <th style={{width:"11%",textAlign:"center",fontSize:"13px"}}>ใบแจ้ง</th>
+                                <th style={{width:"11%",textAlign:"center",fontSize:"13px"}}>พิมพ์</th>
                             </tr></thead>
                             <tbody>
                                 {filteredData.map((row,idx)=>(
                                     <tr key={idx} className="group tr-stagger" style={{animationDelay:`${Math.min(idx*28,400)}ms`,background:selectedKeys.has(rowKeyOf(row))?"var(--accent-cont)":undefined}}>
                                         <td style={{textAlign:"center",verticalAlign:"middle"}}>
                                             <input type="checkbox" checked={selectedKeys.has(rowKeyOf(row))} onChange={()=>toggleRow(row)} style={{width:"17px",height:"17px",accentColor:"var(--accent)",cursor:"pointer"}}/>
+                                        </td>
+                                        <td style={{textAlign:"center",verticalAlign:"middle"}}>
+                                            {row[10]?(
+                                                <img src={row[10]} alt="" loading="lazy" title={`${row[7]||''} ${row[8]||''}`.trim()}
+                                                    style={{width:"54px",height:"54px",objectFit:"cover",borderRadius:"12px",display:"block",margin:"0 auto",background:"var(--accent-cont)"}}
+                                                    onError={e=>{e.currentTarget.style.display='none';}}/>
+                                            ):(
+                                                <div title="ยังไม่มีรูปประจำสีบนเว็บ" style={{width:"54px",height:"54px",borderRadius:"12px",margin:"0 auto",background:"var(--accent-cont)",opacity:".45"}}/>
+                                            )}
                                         </td>
                                         <td style={{verticalAlign:"middle"}}>
                                             <div className="column-a-container overflow-hidden">
@@ -1264,8 +1279,8 @@ const App = () => {
                         {filteredData.length===0&&!loading&&(
                             <div style={{padding:"52px 24px",textAlign:"center"}}>
                                 <div className="empty-state-icon"><svg style={{width:"28px",height:"28px",color:"var(--accent)"}} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg></div>
-                                <p style={{color:"var(--t2)",fontFamily:"'Manrope',sans-serif",fontSize:"15px",fontWeight:600}}>ไม่พบสินค้าที่ค้นหา</p>
-                                <p style={{color:"var(--t3)",fontSize:"13px",marginTop:"4px"}}>ลองปรับเงื่อนไขการค้นหาใหม่</p>
+                                <p style={{color:"var(--t2)",fontFamily:"'Manrope',sans-serif",fontSize:"15px",fontWeight:600}}>{hasActiveFilter?"ไม่พบสินค้าที่ค้นหา":"เลือกตัวกรองด้านบนก่อน"}</p>
+                                <p style={{color:"var(--t3)",fontSize:"13px",marginTop:"4px"}}>{hasActiveFilter?"ลองปรับเงื่อนไขการค้นหาใหม่":`เลือก ${labelH} · ${labelI} · ${labelJ} หรือพิมพ์ค้นหา แล้วรายการจะขึ้นให้`}</p>
                             </div>
                         )}
                     </div>
