@@ -1042,6 +1042,8 @@ const App = () => {
     const selectedKeys=useMemo(()=>new Set(selectedRows.map(rowKeyOf)),[selectedRows]);
     const toggleRow=(row)=>setSelectedRows(prev=>{const k=rowKeyOf(row);return prev.some(r=>rowKeyOf(r)===k)?prev.filter(r=>rowKeyOf(r)!==k):[...prev,row];});
     const [noticeRow,setNoticeRow]=useState(null); const [labelPreview,setLabelPreview]=useState(null);
+    /* กดรูปในตารางแล้วเปิดดูใหญ่ — {url, title, subtitle} · null = ปิดอยู่ */
+    const [photoView,setPhotoView]=useState(null);
     const [printerIP,setPrinterIP]=useState(()=>localStorage.getItem('ls_printer_ip')||'');
     const [bridgeUrl,setBridgeUrl]=useState(()=>localStorage.getItem('ls_bridge_url')||'');
     const [isSettingsOpen,setIsSettingsOpen]=useState(false);
@@ -1060,6 +1062,8 @@ const App = () => {
     const HUB_KEY="lsh_EDj1fBvytk8SvpE6kU9X3tFzd9tp6Y7q85TL3eYsEdA";
     const applyHubData=async(rows)=>{if(!HUB_KEY)return 0;try{const res=await fetch(HUB_URL,{headers:{Authorization:`Bearer ${HUB_KEY}`}});if(!res.ok)throw new Error(`HTTP ${res.status}`);const json=await res.json();const bySku=new Map();(json.items||[]).forEach(it=>{if(!it.sku)return;bySku.set(String(it.sku).trim(),{name:it.shortName||null,img:it.colorImageUrl||it.imageUrl||it.coverUrl||null});});let n=0;rows.forEach(r=>{const hit=bySku.get(String(r[1]).trim());if(!hit)return;if(hit.name){r[3]=hit.name;r[7]=hit.name;n++;}if(hit.img)r[10]=hit.img;});return n;}catch(err){console.warn('[hub] ใช้ชื่อจากชีตแทน',err);return 0;}};
     useEffect(()=>{fetchData();},[]);
+    /* Esc ปิดรูปใหญ่ — บนคอมกดหนีเร็วกว่าเล็งปุ่มกากบาท */
+    useEffect(()=>{if(!photoView)return;const onKey=e=>{if(e.key==='Escape')setPhotoView(null);};window.addEventListener('keydown',onKey);return ()=>window.removeEventListener('keydown',onKey);},[photoView]);
 
     const fetchData=async()=>{setLoading(true);setError(null);try{const res=await fetch(`${PROXY_URL}?path=inventory&t=${new Date().getTime()}`);if(!res.ok)throw new Error(`HTTP ${res.status}`);const json=await res.json();if(!json||!json.rows){const h=["no","sku","CF Code","product_name","variant_name","stock","FALSE","รุ่น","สี","ขนาด"];h[16]="ยังไม่มีข้อมูล";setHeaders(h);setRawData([]);setLoading(false);return;}let rl=Array.isArray(json.rows)?json.rows:Object.values(json.rows);const vr=rl.filter(r=>r&&typeof r==='object'&&(r.barcode||r.item_no));const rows=vr.map(r=>[r.item_no!==undefined?r.item_no:(r.barcode||""),r.sku!==undefined?r.sku:(r.barcode||""),r.cf_code||"",r.product_name||"",r.variant_name||"",r.stock||"",r.col_false||"",r.model||"",r.color||"",r.size||""]);await applyHubData(rows);const h=["ลำดับ","Barcode/SKU","CF Code","product_name","variant_name","stock","FALSE","รุ่น","สี","ขนาด"];h[16]=json.meta?.synced_at||"-";setHeaders(h);setRawData(rows);setLoading(false);}catch(err){console.error(err);setError("เกิดข้อผิดพลาดในการโหลดข้อมูล: "+err.message);setLoading(false);}};
 
@@ -1151,6 +1155,20 @@ const App = () => {
             {labelPreview&&(<LabelPreviewModal data={labelPreview} onClose={()=>setLabelPreview(null)} onBack={()=>{const r=rawData.find(r=>r[1]===labelPreview.sku);setNoticeRow(r);setLabelPreview(null);}}/>)}
             {stickerPromptRow&&!stickerPreview&&(<StickerQuantityModal row={stickerPromptRow} onClose={()=>setStickerPromptRow(null)} onProceed={(copies)=>{setStickerPreview({row:stickerPromptRow,copies});setStickerPromptRow(null);}}/>)}
             {stickerPreview&&(<StickerPreviewModal data={stickerPreview} onClose={()=>setStickerPreview(null)} printerConfig={{printerIP,bridgeUrl}}/>)}
+            {photoView&&(
+                <div className="modal-bg" onClick={()=>setPhotoView(null)} style={{cursor:"zoom-out"}}>
+                    <div className="modal-box" onClick={e=>e.stopPropagation()} style={{maxWidth:"520px",padding:"16px",cursor:"default"}}>
+                        <img src={photoView.url} alt="" style={{width:"100%",maxHeight:"70vh",objectFit:"contain",borderRadius:"var(--r-lg)",display:"block",background:"var(--accent-cont)"}}/>
+                        <div style={{display:"flex",alignItems:"center",gap:"10px",marginTop:"14px"}}>
+                            <div style={{flex:1,minWidth:0}}>
+                                <p style={{fontWeight:800,fontSize:"16px",color:"var(--t1)",fontFamily:"'Manrope',sans-serif",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{photoView.title}</p>
+                                {photoView.subtitle&&<p style={{fontSize:"13px",color:"var(--t3)",marginTop:"2px"}}>{photoView.subtitle}</p>}
+                            </div>
+                            <button onClick={()=>setPhotoView(null)} className="btn-ghost" style={{padding:"10px 18px",borderRadius:"var(--r-pill)",flexShrink:0}}>ปิด</button>
+                        </div>
+                    </div>
+                </div>
+            )}
             {batchPrompt&&!batchPreview&&(<BatchQuantityModal rows={selectedRows} onClose={()=>setBatchPrompt(false)} onRemove={(row)=>{toggleRow(row);if(selectedRows.length<=1)setBatchPrompt(false);}} onProceed={(items)=>{setBatchPreview(items);setBatchPrompt(false);}}/>)}
             {batchPreview&&(<BatchPreviewModal items={batchPreview} onClose={()=>{setBatchPreview(null);setSelectedRows([]);}} printerConfig={{printerIP,bridgeUrl}}/>)}
             {isLogoPrintOpen&&(<LogoPrintModal onClose={()=>setIsLogoPrintOpen(false)} printerConfig={{printerIP,bridgeUrl}}/>)}
@@ -1220,7 +1238,7 @@ const App = () => {
                 </section>
                 <div className="glass-card anim-up-2" style={{overflow:"hidden",padding:"8px 0"}}>
                     <div style={{overflowX:"auto",padding:"0 8px",perspective:"1200px"}}>
-                        <table className="data-table" style={{tableLayout:"fixed",width:"100%"}}>
+                        <table className="data-table" style={{tableLayout:"fixed",width:"100%",minWidth:"720px"}}>
                             <thead><tr>
                                 <th style={{width:"5%",textAlign:"center",fontSize:"13px"}}>
                                     <input type="checkbox" title="เลือกทั้งหมดในหน้านี้" style={{width:"17px",height:"17px",accentColor:"var(--accent)",cursor:"pointer"}}
@@ -1230,9 +1248,9 @@ const App = () => {
                                             else{const fk=new Set(filteredData.map(rowKeyOf));setSelectedRows(prev=>prev.filter(r=>!fk.has(rowKeyOf(r))));}
                                         }}/>
                                 </th>
-                                <th style={{width:"8%",textAlign:"center",fontSize:"13px"}}>รูป</th>
+                                <th style={{width:"116px",textAlign:"center",fontSize:"13px"}}>รูป</th>
                                 <th style={{width:"18%",textAlign:"left",fontSize:"13px"}}>ลำดับ &amp; Barcode</th>
-                                <th style={{width:"23%",textAlign:"center",fontSize:"13px"}}>{labelH}</th>
+                                <th style={{width:"22%",textAlign:"center",fontSize:"13px"}}>{labelH}</th>
                                 <th style={{width:"13%",textAlign:"center",fontSize:"13px"}}>{labelI}</th>
                                 <th style={{width:"11%",textAlign:"center",fontSize:"13px"}}>{labelJ}</th>
                                 <th style={{width:"11%",textAlign:"center",fontSize:"13px"}}>ใบแจ้ง</th>
@@ -1246,11 +1264,12 @@ const App = () => {
                                         </td>
                                         <td style={{textAlign:"center",verticalAlign:"middle"}}>
                                             {row[10]?(
-                                                <img src={row[10]} alt="" loading="lazy" title={`${row[7]||''} ${row[8]||''}`.trim()}
-                                                    style={{width:"54px",height:"54px",objectFit:"cover",borderRadius:"12px",display:"block",margin:"0 auto",background:"var(--accent-cont)"}}
+                                                <img src={row[10]} alt="" loading="lazy" title="กดเพื่อดูรูปใหญ่"
+                                                    onClick={()=>setPhotoView({url:row[10],title:row[7]||row[3]||'',subtitle:[row[8],row[9]].filter(Boolean).join(' · ')})}
+                                                    style={{width:"92px",maxWidth:"100%",aspectRatio:"1",height:"auto",objectFit:"cover",borderRadius:"14px",display:"block",margin:"0 auto",background:"var(--accent-cont)",cursor:"zoom-in"}}
                                                     onError={e=>{e.currentTarget.style.display='none';}}/>
                                             ):(
-                                                <div title="ยังไม่มีรูปประจำสีบนเว็บ" style={{width:"54px",height:"54px",borderRadius:"12px",margin:"0 auto",background:"var(--accent-cont)",opacity:".45"}}/>
+                                                <div title="ยังไม่มีรูปประจำสีบนเว็บ" style={{width:"92px",maxWidth:"100%",aspectRatio:"1",borderRadius:"14px",margin:"0 auto",background:"var(--accent-cont)",opacity:".45"}}/>
                                             )}
                                         </td>
                                         <td style={{verticalAlign:"middle"}}>
