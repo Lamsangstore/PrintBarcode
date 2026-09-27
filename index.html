@@ -675,6 +675,36 @@ const StickerPreviewModal = ({ data, onClose, printerConfig }) => {
 // ===== BATCH PRINT (เลือกหลายรายการ) =====
 const rowKeyOf=(row)=>[row[0],row[1],row[8],row[9]].join('|');
 
+/* ---- แปลงสินค้าจาก Hub ให้เป็นแถวแบบเดิมของแอป (index เดิมทุกช่อง โค้ดส่วนอื่นไม่ต้องแก้) ----
+   [0]=ลำดับ [1]=SKU [2]=CF Code [3]=ชื่อบนสติกเกอร์ [4]=ชื่อแบบ [5]=สต๊อก [6]=- [7]=รุ่น [8]=สี [9]=ขนาด [10]=รูป */
+const SIZE_WORDS=["xs","s","m","l","xl","xxl","2xl","3xl","4xl","5xl","f","freesize"];
+/* ชื่อตัวเลือกบนเว็บมีวงเล็บบอกรอบเอวต่อท้าย เช่น "XS (เอว 22-23.5 | สะโพก 32-33.5)" — เอาเฉพาะคำหน้า */
+const optText=(v)=>String(v||'').split('(')[0].split('|')[0].trim();
+const isSizeOpt=(v)=>{const t=optText(v).toLowerCase();return SIZE_WORDS.includes(t)||/^\d{2,3}$/.test(t);};
+
+/* CF Code สร้างจาก รหัสรุ่น+สี+ขนาด เหมือนที่ชีตเคยเก็บไว้ (เช่น "P02ดำXS") — ใช้ค้นหาได้เหมือนเดิม
+   เอาเฉพาะรหัสรุ่นจากชื่อย่อ ("P02 Brinley" → "P02") ไม่ใช่ชื่อย่อทั้งก้อน */
+const modelCodeOf=(name)=>{const m=String(name||'').toUpperCase().match(/\b([A-Z]{1,3}\d{1,3})\b/);return m?m[1]:String(name||'').replace(/\s+/g,'');};
+const cfCodeOf=(model,color,size)=>[modelCodeOf(model),color,size].map(v=>String(v||'').replace(/\s+/g,'')).join('');
+
+function hubItemsToRows(items){
+    return items.filter(it=>it&&it.sku).map((it,i)=>{
+        const opts=(it.options||[]).map(optText).filter(Boolean);
+        const size=opts.find(isSizeOpt)||'';
+        const color=opts.filter(o=>o!==size).join(' / ');
+        const name=it.shortName||it.productName||'';
+        return [
+            String(i+1), String(it.sku).trim(), cfCodeOf(name,color,size), name,
+            /* ชื่อแบบบนสติกเกอร์ใช้ "สี / ขนาด" ที่ตัดวงเล็บแล้ว — ชื่อเต็มจากเว็บยาวเกินดวงสติกเกอร์
+               (เช่น "ดำ / XS (เอว 22-23.5 | สะโพก 32-33.5)") */
+            [color,size].filter(Boolean).join(' / '),
+            it.stock===undefined||it.stock===null?'':String(it.stock), '',
+            name, color, size,
+            it.colorImageUrl||it.imageUrl||it.coverUrl||''
+        ];
+    });
+}
+
 const buildZplFor=({productName,variantName,sku,copies})=>{
     const p=String(productName||'').substring(0,25); const v=String(variantName||'').substring(0,25); const s=String(sku||'');
     // 300dpi head: 11.811 dots/mm. Same geometry as the browser sheet — labels
@@ -1052,20 +1082,36 @@ const App = () => {
     const [isReloading,setIsReloading]=useState(false);
     const [displayCount,setDisplayCount]=useState(0);
 
-    const PROXY_URL="https://script.google.com/macros/s/AKfycbySdchoxKfxsJ3KtNHJgNxD0weptxTlq0-ZpYzrUACa2FoYsqagtKnsEEe_lHDBWOVR/exec";
-    /* Hub ของร้าน (lamsangstore.com) — ชื่อย่อสินค้ากลาง เช่น "B21 Charming" + รูปประจำสี
-       รายการแถวยังมาจากชีตเหมือนเดิม (มีของที่ยังไม่ขึ้นเว็บ) แต่ชื่อบนสติกเกอร์/ชื่อรุ่นเอาจาก Hub ตาม SKU
-       รูปในตารางใช้รูปประจำสีของ SKU นั้น ไม่มีก็ถอยไปใช้รูปปก (เก็บไว้ที่ row[10])
+    /* **รายการสินค้าทั้งหมดมาจาก Hub ของร้าน** (lamsangstore.com) — ตั้งแต่ 27 ก.ย. 2569
+       เดิมอ่านจาก Google Sheet ผ่าน Apps Script แล้วเอาชื่อจาก Hub มาทับทีหลัง
+       ชีตมี 885 แถว ตรงกับเว็บ 761 — อีก 124 แถวเป็นของที่ไม่มีบนเว็บ **ร้านสั่งว่าไม่ต้องเอามา**
+       (ชีตยังล่มเป็นพัก ๆ ด้วย — วันที่ย้ายนี้ Apps Script ตอบ HTTP 404 อยู่หลายรอบ)
+       ชื่อ · สี · ขนาด · รูป · สต๊อก จึงมาจากที่เดียวกับเว็บร้านและคีย์ลัดแล้ว ไม่ต้องซิงก์ชีตอีก
        กุญแจออกที่ หลังบ้าน → Hub เชื่อมแอป (ตั้ง origin เป็น https://barcode.lamsangstore.com · ไม่เปิดต้นทุน)
        เว้นว่าง = ใช้ชื่อจากชีตอย่างเดียวเหมือนเดิม · Hub ล่ม = ใช้ชื่อจากชีตต่อ ไม่ทำให้หน้าพัง */
     const HUB_URL="https://lamsangstore.com/api/hub/v1/products?inactive=1";
     const HUB_KEY="lsh_EDj1fBvytk8SvpE6kU9X3tFzd9tp6Y7q85TL3eYsEdA";
-    const applyHubData=async(rows)=>{if(!HUB_KEY)return 0;try{const res=await fetch(HUB_URL,{headers:{Authorization:`Bearer ${HUB_KEY}`}});if(!res.ok)throw new Error(`HTTP ${res.status}`);const json=await res.json();const bySku=new Map();(json.items||[]).forEach(it=>{if(!it.sku)return;bySku.set(String(it.sku).trim(),{name:it.shortName||null,img:it.colorImageUrl||it.imageUrl||it.coverUrl||null});});let n=0;rows.forEach(r=>{const hit=bySku.get(String(r[1]).trim());if(!hit)return;if(hit.name){r[3]=hit.name;r[7]=hit.name;n++;}if(hit.img)r[10]=hit.img;});return n;}catch(err){console.warn('[hub] ใช้ชื่อจากชีตแทน',err);return 0;}};
     useEffect(()=>{fetchData();},[]);
     /* Esc ปิดรูปใหญ่ — บนคอมกดหนีเร็วกว่าเล็งปุ่มกากบาท */
     useEffect(()=>{if(!photoView)return;const onKey=e=>{if(e.key==='Escape')setPhotoView(null);};window.addEventListener('keydown',onKey);return ()=>window.removeEventListener('keydown',onKey);},[photoView]);
 
-    const fetchData=async()=>{setLoading(true);setError(null);try{const res=await fetch(`${PROXY_URL}?path=inventory&t=${new Date().getTime()}`);if(!res.ok)throw new Error(`HTTP ${res.status}`);const json=await res.json();if(!json||!json.rows){const h=["no","sku","CF Code","product_name","variant_name","stock","FALSE","รุ่น","สี","ขนาด"];h[16]="ยังไม่มีข้อมูล";setHeaders(h);setRawData([]);setLoading(false);return;}let rl=Array.isArray(json.rows)?json.rows:Object.values(json.rows);const vr=rl.filter(r=>r&&typeof r==='object'&&(r.barcode||r.item_no));const rows=vr.map(r=>[r.item_no!==undefined?r.item_no:(r.barcode||""),r.sku!==undefined?r.sku:(r.barcode||""),r.cf_code||"",r.product_name||"",r.variant_name||"",r.stock||"",r.col_false||"",r.model||"",r.color||"",r.size||""]);await applyHubData(rows);const h=["ลำดับ","Barcode/SKU","CF Code","product_name","variant_name","stock","FALSE","รุ่น","สี","ขนาด"];h[16]=json.meta?.synced_at||"-";setHeaders(h);setRawData(rows);setLoading(false);}catch(err){console.error(err);setError("เกิดข้อผิดพลาดในการโหลดข้อมูล: "+err.message);setLoading(false);}};
+    const fetchData=async()=>{
+        setLoading(true);setError(null);
+        try{
+            if(!HUB_KEY)throw new Error("ยังไม่ได้ตั้งกุญแจ Hub");
+            const res=await fetch(`${HUB_URL}&t=${Date.now()}`,{headers:{Authorization:`Bearer ${HUB_KEY}`}});
+            if(!res.ok)throw new Error(`HTTP ${res.status}`);
+            const json=await res.json();
+            const rows=hubItemsToRows(json.items||[]);
+            const h=["ลำดับ","Barcode/SKU","CF Code","product_name","variant_name","stock","FALSE","รุ่น","สี","ขนาด"];
+            h[16]=json.generatedAt?new Date(json.generatedAt).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',dateStyle:'short',timeStyle:'short'}):"-";
+            setHeaders(h);setRawData(rows);setLoading(false);
+        }catch(err){
+            console.error(err);
+            setError("โหลดสินค้าจากเว็บร้านไม่สำเร็จ: "+err.message);
+            setLoading(false);
+        }
+    };
 
     const dropdownOptions=useMemo(()=>{const h=new Set(),i=new Set(),j=new Set();rawData.forEach(r=>{const vH=String(r[7]||'').toLowerCase(),vI=String(r[8]||'').toLowerCase(),vJ=String(r[9]||'').toLowerCase();const mH=!filterH||vH===filterH.toLowerCase(),mI=!filterI||vI===filterI.toLowerCase(),mJ=!filterJ||vJ===filterJ.toLowerCase();if(mI&&mJ&&r[7])h.add(r[7]);if(mH&&mJ&&r[8])i.add(r[8]);if(mH&&mI&&r[9])j.add(r[9]);});const so=["xs","s","m","l","xl","xxl","2xl","3xl","4xl","5xl","f","freesize"];const ss=(a,b)=>{const aL=String(a).toLowerCase().trim(),bL=String(b).toLowerCase().trim(),aI=so.indexOf(aL),bI=so.indexOf(bL);if(aI!==-1&&bI!==-1)return aI-bI;if(aI!==-1)return -1;if(bI!==-1)return 1;return aL.localeCompare(bL,'th');};return{h:[...h].sort((a,b)=>String(a).localeCompare(String(b),'th')),i:[...i].sort((a,b)=>String(a).localeCompare(String(b),'th')),j:[...j].sort(ss)};},[rawData,filterH,filterI,filterJ]);
 
