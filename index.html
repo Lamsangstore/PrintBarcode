@@ -321,6 +321,104 @@ body{font-family:'Noto Sans Thai','Plus Jakarta Sans',sans-serif;background:var(
 </head>
 <body>
 <div id="root"></div>
+<script>
+/* ---------------------------------------------------------------------------
+   ล็อกอินกลางของร้าน (เฟส G · 30 ก.ย. 2569) — ก้อนนี้เหมือนกันทุกแอป
+   แก้ APP ให้ตรงกับ slug ในทะเบียน `src/lib/hub-apps.ts` ของเว็บร้านเท่านั้น
+
+   กุญแจ Hub ที่ฝังในหน้าเว็บบอกได้แค่ว่า "คำขอมาจากแอปไหน" (ใครเปิด view-source ก็ได้ไป)
+   ส่วนก้อนนี้ทำให้รู้ว่า **ใคร** กำลังใช้ — พนักงานกดเข้าสู่ระบบด้วยบัญชีหลังบ้านของร้าน
+   เว็บร้านออกโทเค็นของคนนั้นให้ (อายุ 30 วัน เก็บไว้ในเครื่องนี้)
+
+   เจ้าของร้านปิดบัญชีหรือกด "บังคับออกจากระบบ" ที่ /admin/users = ตัดทุกแอปพร้อมกัน
+   **ยังไม่ล็อกอินก็ใช้แอปได้ตามปกติ** (ถอยไปใช้กุญแจของแอป) จนกว่าทุกคนจะมีบัญชี
+--------------------------------------------------------------------------- */
+window.HubLogin = (function () {
+  const APP  = 'barcode';
+  const BASE = 'https://lamsangstore.com';
+
+  let token = '', user = null;
+  try {
+    token = localStorage.getItem('hubUserToken') || '';
+    user  = JSON.parse(localStorage.getItem('hubUser') || 'null');
+  } catch (e) {}
+
+  const listeners = [];
+  function notify() { listeners.forEach(function (fn) { try { fn(user); } catch (e) {} }); }
+
+  /* รับโทเค็นที่เว็บร้านส่งกลับมาทาง `#lsa=…` แล้วลบออกจากแถบที่อยู่ทันที
+     (ส่งทาง hash ไม่ใช่ query โทเค็นจึงไม่ไปโผล่ใน log ของเซิร์ฟเวอร์ไหนเลย) */
+  (function catchLogin() {
+    const m = /[#&]lsa=([^&]+)/.exec(location.hash || '');
+    if (!m) return;
+    try {
+      token = decodeURIComponent(m[1]);
+      localStorage.setItem('hubUserToken', token);
+    } catch (e) {}
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+  })();
+
+  function setUser(u) {
+    user = u || null;
+    try {
+      if (user) localStorage.setItem('hubUser', JSON.stringify(user));
+      else localStorage.removeItem('hubUser');
+    } catch (e) {}
+    notify();
+  }
+
+  /** โทเค็นใช้ไม่ได้แล้ว (หมดอายุ · ถูกตัดสิทธิ์ · ลาออก) — ถอยไปใช้กุญแจของแอปต่อ */
+  function drop() {
+    token = '';
+    try { localStorage.removeItem('hubUserToken'); } catch (e) {}
+    setUser(null);
+  }
+
+  /** ถามเว็บร้านว่าโทเค็นยังใช้ได้ไหมและเป็นของใคร */
+  async function refresh() {
+    if (!token) { setUser(null); return null; }
+    try {
+      const res = await fetch(BASE + '/api/hub/v1/session', {
+        headers: { Authorization: 'Bearer ' + token }, cache: 'no-store'
+      });
+      if (res.status === 401) { drop(); return null; }
+      if (!res.ok) return user;              // เว็บมีปัญหาชั่วคราว — ใช้ชื่อเดิมไว้ก่อน
+      const json = await res.json();
+      setUser(json.user || null);
+      return user;
+    } catch (e) { return user; }             // ออฟไลน์ — ใช้ชื่อที่จำไว้
+  }
+
+  return {
+    app: APP,
+    user: function () { return user; },
+    token: function () { return token; },
+    /** กุญแจที่ควรใช้ยิง Hub — โทเค็นของคนมาก่อน ไม่มีค่อยใช้กุญแจของแอป */
+    auth: function (appKey) { return token || appKey || ''; },
+    /** เรียกเมื่อคำขอถูกตอบ 401 ขณะที่ใช้โทเค็นของคน — คืน true ถ้าควรลองใหม่ด้วยกุญแจแอป */
+    fell: function (status) {
+      if (status === 401 && token) { drop(); return true; }
+      return false;
+    },
+    loginHref: function () {
+      return BASE + '/app-login?app=' + APP + '&return=' +
+        encodeURIComponent(location.origin + location.pathname);
+    },
+    async signOut() {
+      if (!token) return;
+      try {
+        await fetch(BASE + '/api/hub/v1/session', {
+          method: 'DELETE', headers: { Authorization: 'Bearer ' + token }
+        });
+      } catch (e) {}
+      drop();
+    },
+    refresh: refresh,
+    onChange: function (fn) { listeners.push(fn); fn(user); }
+  };
+})();
+</script>
+
 <script type="text/babel">
 const { useState, useEffect, useMemo, useRef } = React;
 /* ===== 3-up QR sticker sheet =====
@@ -1081,6 +1179,16 @@ const App = () => {
     const [searchTerm,setSearchTerm]=useState(''); const [filterH,setFilterH]=useState(''); const [filterI,setFilterI]=useState(''); const [filterJ,setFilterJ]=useState('');
     const [isReloading,setIsReloading]=useState(false);
     const [displayCount,setDisplayCount]=useState(0);
+    /* ใครกำลังใช้แอปนี้ — ล็อกอินกลางของร้าน (ดูก้อน HubLogin ข้างบน) */
+    const [hubUser,setHubUser]=useState(()=>HubLogin.user());
+    useEffect(()=>{HubLogin.onChange(setHubUser);HubLogin.refresh();},[]);
+    const onHubChip=async()=>{
+        if(!hubUser){location.href=HubLogin.loginHref();return;}
+        if(!confirm('ออกจากระบบของ '+hubUser.name+' บนเครื่องนี้?'))return;
+        await HubLogin.signOut();
+        /* โหลดรายการใหม่ด้วยกุญแจของแอป — ไม่ต้องรีเฟรชหน้าเอง */
+        fetchData();
+    };
 
     /* **รายการสินค้าทั้งหมดมาจาก Hub ของร้าน** (lamsangstore.com) — ตั้งแต่ 27 ก.ย. 2569
        เดิมอ่านจาก Google Sheet ผ่าน Apps Script แล้วเอาชื่อจาก Hub มาทับทีหลัง
@@ -1098,8 +1206,12 @@ const App = () => {
     const fetchData=async()=>{
         setLoading(true);setError(null);
         try{
-            if(!HUB_KEY)throw new Error("ยังไม่ได้ตั้งกุญแจ Hub");
-            const res=await fetch(`${HUB_URL}&t=${Date.now()}`,{headers:{Authorization:`Bearer ${HUB_KEY}`}});
+            if(!HubLogin.auth(HUB_KEY))throw new Error("ยังไม่ได้ตั้งกุญแจ Hub");
+            const pull=k=>fetch(`${HUB_URL}&t=${Date.now()}`,{headers:{Authorization:`Bearer ${k}`}});
+            let res=await pull(HubLogin.auth(HUB_KEY));
+            /* โทเค็นของคนหมดอายุหรือถูกตัดสิทธิ์ — ทิ้งแล้วโหลดใหม่ด้วยกุญแจของแอป
+               ปุ่มบนหัวจะกลับเป็น "เข้าสู่ระบบ" เอง แต่รายการสินค้ายังขึ้นปกติ */
+            if(HubLogin.fell(res.status))res=await pull(HUB_KEY);
             if(!res.ok)throw new Error(`HTTP ${res.status}`);
             const json=await res.json();
             const rows=hubItemsToRows(json.items||[]);
@@ -1243,6 +1355,9 @@ const App = () => {
                             <div><h1 className="page-title" style={{fontSize:"22px"}}>Print Barcode</h1><div style={{display:"flex",alignItems:"center",gap:"5px",marginTop:"4px"}}><div style={{width:"6px",height:"6px",borderRadius:"50%",background:"var(--accent)"}}/><p style={{fontSize:"13px",color:"var(--t3)",fontWeight:500}}>อัปเดต: {headers[16]||'—'}</p></div></div>
                         </div>
                         <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+                            <button onClick={onHubChip} title={hubUser?(hubUser.name+" — กดเพื่อออกจากระบบเครื่องนี้"):"เข้าสู่ระบบด้วยบัญชีร้าน"} style={{display:"flex",alignItems:"center",gap:"6px",padding:"8px 12px",borderRadius:"var(--r-sm)",background:"var(--accent-cont2)",border:"1.5px solid rgba(0,104,79,.22)",color:"var(--accent)",fontSize:"12px",fontWeight:700,fontFamily:"'Manrope',sans-serif",cursor:"pointer",maxWidth:"170px",overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",opacity:hubUser?1:.75}}>
+                                <span>👤</span><span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{hubUser?hubUser.name:"เข้าสู่ระบบ"}</span>
+                            </button>
                             <div className="stat-box" style={{minWidth:"80px"}}>
                                 <span style={{fontSize:"11px",fontWeight:700,color:"var(--accent)",textTransform:"uppercase",letterSpacing:".08em",fontFamily:"'Manrope',sans-serif"}}>พบสินค้า</span>
                                 <span key={displayCount} style={{fontSize:"26px",fontWeight:800,color:"var(--t1)",lineHeight:1,fontFamily:"'Manrope',sans-serif",animation:"countUp .3s cubic-bezier(.34,1.56,.64,1)"}}>{displayCount}</span>
