@@ -731,7 +731,7 @@ const StickerPreviewModal = ({ data, onClose, printerConfig }) => {
     const tryWsBridge=()=>new Promise((res,rej)=>{if(!bridgeUrl){rej(new Error('no_bridge'));return;}const url=bridgeUrl.startsWith('ws')?bridgeUrl:`ws://${bridgeUrl}`;let ws,done=false;try{ws=new WebSocket(url);}catch(e){rej(e);return;}const t=setTimeout(()=>{done=true;try{ws.close()}catch{};rej(new Error('timeout'));},5000);ws.onopen=()=>ws.send(JSON.stringify({action:'print',productName,variantName,sku,copies}));ws.onmessage=e=>{if(done)return;done=true;clearTimeout(t);let r;try{r=JSON.parse(e.data);}catch{r={};}ws.close();r.ok?res(r):rej(new Error(r.error||'bridge_error'));};ws.onerror=()=>{if(!done){done=true;clearTimeout(t);try{ws.close()}catch{};rej(new Error('ws_error'));}};ws.onclose=()=>{if(!done){done=true;clearTimeout(t);rej(new Error('ws_closed'));}};});
     const tryWifiDirect=()=>new Promise(async(res,rej)=>{if(!printerIP){rej(new Error('no_ip'));return;}try{const c=new AbortController();const t=setTimeout(()=>c.abort(),4000);await fetch(`http://${printerIP}/pstprnt`,{method:'POST',mode:'no-cors',body:generateZPL(),signal:c.signal});clearTimeout(t);res({printer:printerIP});}catch(e){rej(e);}});
     const openPrintPopup=()=>{var pages='';var sheet=stickerSheetHtml({productName,variantName,sku});for(var pi=0;pi<(copies||1);pi++){pages+=sheet;}var old=document.getElementById('zpl-print-frame');if(old)old.parentNode.removeChild(old);var iframe=document.createElement('iframe');iframe.id='zpl-print-frame';iframe.style.cssText='position:fixed;left:-9999px;top:0;width:100mm;height:25mm;border:none;';document.body.appendChild(iframe);var doc=iframe.contentDocument||iframe.contentWindow.document;doc.open();doc.write(stickerPrintDoc(pages));doc.close();var doPrint=function(){iframe.contentWindow.focus();try{iframe.contentWindow.print();}catch(e){window.print();}setTimeout(function(){var f=document.getElementById('zpl-print-frame');if(f)f.parentNode.removeChild(f);},5000);};whenStickerDocReady(doc,doPrint);};
-    const handleSmartPrint=async(e)=>{addRipple(e);if(status==='printing')return;setStatus('printing');setStatusMsg('');setShowConfetti(false);if(bridgeUrl){setStatusMsg('กำลังเชื่อมต่อ Bridge...');try{await tryWsBridge();setStatus('success');setStatusMsg(`พิมพ์ ${copies} แผ่น (${copies*3} ดวง) สำเร็จ!`);setShowConfetti(true);setTimeout(()=>{setStatus('idle');setStatusMsg('');setShowConfetti(false);},5000);return;}catch(e){console.warn('WS:',e.message);}}if(printerIP){setStatusMsg('ส่งตรงไปเครื่องพิมพ์...');try{await tryWifiDirect();setStatus('success');setStatusMsg(`พิมพ์ ${copies} แผ่น สำเร็จ!`);setShowConfetti(true);setTimeout(()=>{setStatus('idle');setStatusMsg('');setShowConfetti(false);},5000);return;}catch(e){console.warn('WiFi:',e.message);}}openPrintPopup();setStatus('fallback');setStatusMsg(`เปิดหน้าต่างพิมพ์ ${copies} แผ่น (${copies*3} ดวง) แล้ว — ตั้ง Copies = 1`);setTimeout(()=>{setStatus('idle');setStatusMsg('');},6000);};
+    const handleSmartPrint=async(e)=>{addRipple(e);if(status==='printing')return;PrintLog.add('sticker',[{sku,name:productName,detail:variantName,copies}]);setStatus('printing');setStatusMsg('');setShowConfetti(false);if(bridgeUrl){setStatusMsg('กำลังเชื่อมต่อ Bridge...');try{await tryWsBridge();setStatus('success');setStatusMsg(`พิมพ์ ${copies} แผ่น (${copies*3} ดวง) สำเร็จ!`);setShowConfetti(true);setTimeout(()=>{setStatus('idle');setStatusMsg('');setShowConfetti(false);},5000);return;}catch(e){console.warn('WS:',e.message);}}if(printerIP){setStatusMsg('ส่งตรงไปเครื่องพิมพ์...');try{await tryWifiDirect();setStatus('success');setStatusMsg(`พิมพ์ ${copies} แผ่น สำเร็จ!`);setShowConfetti(true);setTimeout(()=>{setStatus('idle');setStatusMsg('');setShowConfetti(false);},5000);return;}catch(e){console.warn('WiFi:',e.message);}}openPrintPopup();setStatus('fallback');setStatusMsg(`เปิดหน้าต่างพิมพ์ ${copies} แผ่น (${copies*3} ดวง) แล้ว — ตั้ง Copies = 1`);setTimeout(()=>{setStatus('idle');setStatusMsg('');},6000);};
     const zplText=generateZPL(); const isReady=!!(bridgeUrl||printerIP);
     return (
         <div className="fixed inset-0 z-[400] flex flex-col items-center p-4 overflow-y-auto print:static print:bg-white print:p-0 print:block" style={{background:'linear-gradient(135deg,#0a2d1e 0%,#1a3a28 50%,#0d2a40 100%)'}}>
@@ -928,6 +928,7 @@ const BatchPreviewModal = ({ items, onClose, printerConfig }) => {
     const handlePrint=async()=>{
         if(status==='printing')return;
         setStatus('printing'); setStatusMsg(''); setDoneIdx(-1); setFailed([]);
+        PrintLog.add('batch',items.map(it=>({sku:it.sku,name:it.productName,detail:it.variantName,copies:it.copies})));
         if(bridgeUrl){
             const bad=await runSequential(it=>wsPrintOnce(bridgeUrl,{productName:it.productName,variantName:it.variantName,sku:it.sku,copies:it.copies}));
             if(bad.length<items.length){
@@ -1069,6 +1070,7 @@ const LogoPrintModal = ({ onClose, printerConfig }) => {
     const handleSmartPrint=async(e)=>{
         addRipple(e);
         if(status==="printing")return;
+        PrintLog.add("logo",[{sku:"",name:"โลโก้สติกเกอร์",detail:selected.label,copies}]);
         if(copies<=0)return;
         setStatus("printing");setStatusMsg("");setShowConfetti(false);
         if(bridgeUrl){
@@ -1161,6 +1163,70 @@ const LogoPrintModal = ({ onClose, printerConfig }) => {
     );
 };
 
+
+/* ===== ประวัติการพิมพ์ — เก็บในเครื่องนี้ 90 วัน พร้อมชื่อคนที่กดพิมพ์ (จากล็อกอินกลาง) ===== */
+const PrintLog=(function(){
+    const KEY='ls_print_history',DAYS=90,MS=DAYS*86400000;
+    function load(){try{const a=JSON.parse(localStorage.getItem(KEY)||'[]');const cut=Date.now()-MS;return Array.isArray(a)?a.filter(e=>e&&e.t>=cut):[];}catch(e){return [];}}
+    function save(a){try{localStorage.setItem(KEY,JSON.stringify(a));}catch(e){}}
+    return {
+        days:DAYS,
+        list:load,
+        /** type: sticker | batch | logo · items: [{sku,name,detail,copies}] */
+        add:function(type,items){const u=HubLogin.user();const a=load();a.push({t:Date.now(),user:u?u.name:'',type:type,items:items});save(a);},
+        clear:function(){save([]);}
+    };
+})();
+const PRINT_TYPE_LABEL={sticker:'สติกเกอร์ QR',batch:'พิมพ์หลายรายการ',logo:'โลโก้'};
+
+const PrintHistoryModal = ({ onClose }) => {
+    const [all,setAll]=useState(()=>PrintLog.list().sort((a,b)=>b.t-a.t));
+    const [who,setWho]=useState('');
+    const [q,setQ]=useState('');
+    const NOUSER='(ไม่ได้ล็อกอิน)';
+    const nameOf=e=>e.user||NOUSER;
+    const users=[...new Set(all.map(nameOf))];
+    const term=q.trim().toLowerCase();
+    const rows=all.filter(e=>(!who||nameOf(e)===who)&&(!term||e.items.some(i=>(i.sku+' '+i.name+' '+(i.detail||'')).toLowerCase().includes(term))));
+    const fmt=t=>new Date(t).toLocaleString('th-TH',{day:'numeric',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'});
+    const totalCopies=e=>e.items.reduce((n,i)=>n+(i.copies||0),0);
+    return (
+        <div className="modal-bg" onClick={onClose}>
+            <div className="modal-box" onClick={e=>e.stopPropagation()} style={{maxWidth:'640px',width:'100%',maxHeight:'88vh',display:'flex',flexDirection:'column'}}>
+                <div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'12px'}}>
+                    <div style={{flex:1}}>
+                        <h3 style={{fontWeight:800,fontSize:'18px',color:'var(--t1)',fontFamily:"'Manrope',sans-serif"}}>ประวัติการพิมพ์</h3>
+                        <p style={{fontSize:'12px',color:'var(--t3)'}}>เก็บ {PrintLog.days} วันล่าสุด · บันทึกเฉพาะบนเครื่อง/เบราว์เซอร์นี้ · {rows.length} ครั้ง</p>
+                    </div>
+                    <button onClick={onClose} className="btn-ghost" style={{padding:'8px 16px',borderRadius:'var(--r-pill)'}}>ปิด</button>
+                </div>
+                <div style={{display:'flex',gap:'8px',marginBottom:'12px',flexWrap:'wrap'}}>
+                    <select className="input-base" style={{flex:'1 1 160px'}} value={who} onChange={e=>setWho(e.target.value)}>
+                        <option value="">ทุกคน</option>
+                        {users.map(u=><option key={u} value={u}>{u}</option>)}
+                    </select>
+                    <input type="text" className="input-base" style={{flex:'2 1 200px'}} placeholder="ค้นหา SKU / ชื่อสินค้า" value={q} onChange={e=>setQ(e.target.value)}/>
+                </div>
+                <div style={{overflowY:'auto',flex:1,display:'flex',flexDirection:'column',gap:'8px'}}>
+                    {rows.length===0&&<p style={{textAlign:'center',color:'var(--t3)',padding:'30px 0',fontSize:'14px'}}>ยังไม่มีประวัติการพิมพ์</p>}
+                    {rows.map((e,i)=>(
+                        <div key={e.t+'-'+i} style={{padding:'10px 12px',borderRadius:'var(--r-sm)',border:'1px solid var(--border2)',background:'#f7f8f6'}}>
+                            <div style={{display:'flex',justifyContent:'space-between',gap:'8px',fontSize:'12px',color:'var(--t3)'}}>
+                                <span>{fmt(e.t)}</span>
+                                <span style={{fontWeight:700,color:e.user?'var(--accent)':'var(--t3)'}}>👤 {nameOf(e)}</span>
+                            </div>
+                            <p style={{fontSize:'13px',fontWeight:700,color:'var(--t1)',margin:'4px 0 2px'}}>{PRINT_TYPE_LABEL[e.type]||e.type} · รวม {totalCopies(e)} {e.type==='logo'?'ดวง':'แผ่น'}</p>
+                            {e.items.map((it,j)=>(
+                                <p key={j} style={{fontSize:'12px',color:'var(--t2)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{it.name}{it.detail?' · '+it.detail:''}{it.sku?' · '+it.sku:''} <b>×{it.copies}</b></p>
+                            ))}
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const labelH="รุ่น"; const labelI="สี"; const labelJ="ขนาด";
 
 const App = () => {
@@ -1176,6 +1242,7 @@ const App = () => {
     const [bridgeUrl,setBridgeUrl]=useState(()=>localStorage.getItem('ls_bridge_url')||'');
     const [isSettingsOpen,setIsSettingsOpen]=useState(false);
     const [isLogoPrintOpen,setIsLogoPrintOpen]=useState(false);
+    const [isHistoryOpen,setIsHistoryOpen]=useState(false);
     const [searchTerm,setSearchTerm]=useState(''); const [filterH,setFilterH]=useState(''); const [filterI,setFilterI]=useState(''); const [filterJ,setFilterJ]=useState('');
     const [isReloading,setIsReloading]=useState(false);
     const [displayCount,setDisplayCount]=useState(0);
@@ -1329,6 +1396,7 @@ const App = () => {
             )}
             {batchPrompt&&!batchPreview&&(<BatchQuantityModal rows={selectedRows} onClose={()=>setBatchPrompt(false)} onRemove={(row)=>{toggleRow(row);if(selectedRows.length<=1)setBatchPrompt(false);}} onProceed={(items)=>{setBatchPreview(items);setBatchPrompt(false);}}/>)}
             {batchPreview&&(<BatchPreviewModal items={batchPreview} onClose={()=>{setBatchPreview(null);setSelectedRows([]);}} printerConfig={{printerIP,bridgeUrl}}/>)}
+            {isHistoryOpen&&(<PrintHistoryModal onClose={()=>setIsHistoryOpen(false)}/>)}
             {isLogoPrintOpen&&(<LogoPrintModal onClose={()=>setIsLogoPrintOpen(false)} printerConfig={{printerIP,bridgeUrl}}/>)}
             {isSettingsOpen&&(
                 <div className="settings-bg" onClick={()=>setIsSettingsOpen(false)}>
@@ -1369,6 +1437,7 @@ const App = () => {
                                     <span style={{fontSize:"15px",fontWeight:800,whiteSpace:"nowrap"}}>Print Logo</span>
                                 </span>
                             </button>
+                            <button onClick={()=>setIsHistoryOpen(true)} className="btn-icon" title="ประวัติการพิมพ์"><span style={{fontSize:"16px"}}>🕘</span></button>
                             <button onClick={()=>setIsSettingsOpen(true)} className="btn-icon" title="ตั้งค่า">
                                 <svg style={{width:"17px",height:"17px"}} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                             </button>
