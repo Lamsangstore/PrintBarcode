@@ -4,16 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ปรับตำแหน่งพิมพ์ — Print Barcode</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  body{font-family:-apple-system,'Noto Sans Thai',sans-serif;background:#0f1e26;color:#e7f2ee;
+  body{font-family:'Noto Sans Thai',system-ui,-apple-system,sans-serif;background:#1c1b19;color:#f5f5f4;
        margin:0;padding:32px 20px 64px;line-height:1.7;}
   .wrap{max-width:640px;margin:0 auto;}
   h1{font-size:22px;margin:0 0 4px;}
-  p{color:#a9c3bd;margin:0 0 14px;}
-  ol{color:#a9c3bd;padding-left:20px;}
+  p{color:#cbd5e1;margin:0 0 14px;}
+  ol{color:#cbd5e1;padding-left:20px;}
   li{margin-bottom:8px;}
-  code{background:rgba(255,255,255,.1);padding:2px 6px;border-radius:5px;color:#89f0cb;}
-  button{background:linear-gradient(135deg,#00684f,#00a372);color:#fff;border:0;border-radius:14px;
+  code{background:rgba(255,255,255,.1);padding:2px 6px;border-radius:5px;color:#d9bf7d;}
+  button{background:linear-gradient(135deg,#a8853f,#bf9c4f);color:#fff;border:0;border-radius:14px;
          padding:16px 28px;font-size:17px;font-weight:800;cursor:pointer;width:100%;margin-top:18px;
          font-family:inherit;}
   button:active{transform:scale(.98);}
@@ -25,13 +26,13 @@
   .pick{display:flex;align-items:center;gap:6px;font-size:15px;font-weight:700;
         background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.14);
         border-radius:9px;padding:8px 12px;cursor:pointer;}
-  .pick:has(input:checked){background:rgba(0,163,114,.28);border-color:#00a372;}
-  .pick input{accent-color:#00a372;}
+  .pick:has(input:checked){background:rgba(168,133,63,.28);border-color:#bf9c4f;}
+  .pick input{accent-color:#a8853f;}
   input{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.18);border-radius:9px;
-        color:#e7f2ee;font-size:18px;font-weight:800;padding:8px 10px;width:96px;text-align:center;
+        color:#f5f5f4;font-size:18px;font-weight:800;padding:8px 10px;width:96px;text-align:center;
         font-family:inherit;}
-  .note{background:rgba(137,240,203,.1);border:1px solid rgba(137,240,203,.25);border-radius:12px;
-        padding:14px 16px;margin-top:20px;font-size:14px;color:#cfe9e2;}
+  .note{background:rgba(217,191,125,.1);border:1px solid rgba(217,191,125,.25);border-radius:12px;
+        padding:14px 16px;margin-top:20px;font-size:14px;color:#e7e5e4;}
 </style>
 </head>
 <body>
